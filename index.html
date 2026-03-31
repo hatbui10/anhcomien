@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Poster Editor Pro - Database Fixed 100%</title>
+    <title>Poster Editor Pro - Sync Fixed</title>
     <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <style>
@@ -31,10 +31,6 @@
         .item.selected .size-badge { display: block; }
         .resize-handle { display: none; position: absolute; width: 8px; height: 8px; background: white; border: 1px solid var(--primary); z-index: 10; }
         .item.selected .resize-handle { display: block; }
-        .nw { top: -4px; left: -4px; cursor: nw-resize; } .ne { top: -4px; right: -4px; cursor: ne-resize; }
-        .sw { bottom: -4px; left: -4px; cursor: sw-resize; } .se { bottom: -4px; right: -4px; cursor: se-resize; }
-        .n { top: -4px; left: calc(50% - 4px); cursor: n-resize; } .s { bottom: -4px; left: calc(50% - 4px); cursor: s-resize; }
-        .w { left: -4px; top: calc(50% - 4px); cursor: w-resize; } .e { right: -4px; top: calc(50% - 4px); cursor: e-resize; }
         .rotate-handle { display: none; position: absolute; top: -25px; left: 50%; transform: translateX(-50%); width: 12px; height: 12px; background: white; border: 2px solid var(--primary); border-radius: 50%; cursor: crosshair; }
         .item.selected .rotate-handle { display: block; }
         .text-content { outline: none; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; text-align: center; word-break: break-word; color: black; }
@@ -50,9 +46,9 @@
     <button class="btn btn-add" onclick="document.getElementById('imgUpload').click()">🖼️ Thêm Ảnh</button>
     <button class="btn btn-layer" onclick="bringToFront()">🔝 Ra phía trước</button>
     <div style="flex-grow: 1;"></div> 
-    <input type="color" id="colorPicker" value="#1e3a8a">
+    <input type="color" id="colorPicker" value="#000000">
     <input type="number" id="sizePicker" value="24" style="width: 50px;">
-    <button class="btn btn-save" onclick="saveToStorage()">💾 LƯU THỦ CÔNG</button>
+    <button class="btn btn-save" onclick="saveData(true)">💾 LƯU THỦ CÔNG</button>
     <button class="btn btn-export" onclick="download()">🖼️ Xuất Ảnh</button>
 </div>
 
@@ -73,7 +69,7 @@
     let maxZIndex = 100;
     const canvas = document.getElementById('canvas');
 
-    const dbName = "PosterDB_v4"; // Đổi tên để xóa cache cũ
+    const dbName = "PosterDB_v5_Final"; 
     const storeName = "projects";
 
     // 1. Khởi tạo Database
@@ -88,23 +84,76 @@
         });
     }
 
-    // 2. Tải dữ liệu khi mở trang
+    // 2. Chờ ảnh tải xong
+    async function waitImages() {
+        const imgs = canvas.querySelectorAll("img");
+        await Promise.all(Array.from(imgs).map(img => {
+            if (img.complete) return Promise.resolve();
+            return new Promise(r => { img.onload = r; img.onerror = r; });
+        }));
+    }
+
+    // 3. LOGIC LƯU TRỮ ĐỒNG BỘ
+    async function saveData(showAlert = false) {
+        // A. Thu thập dữ liệu từ Canvas hiện tại
+        const items = [];
+        document.querySelectorAll('.item').forEach(el => {
+            const img = el.querySelector('img');
+            const text = el.querySelector('.text-content');
+            items.push({
+                type: img ? 'image' : 'text',
+                content: img ? img.src : text.innerHTML,
+                x: parseFloat(el.getAttribute('data-x')) || 0,
+                y: parseFloat(el.getAttribute('data-y')) || 0,
+                w: el.offsetWidth,
+                h: el.offsetHeight,
+                angle: parseFloat(el.getAttribute('data-angle')) || 0,
+                z: el.style.zIndex,
+                color: img ? null : text.style.color,
+                fontSize: img ? null : parseInt(text.style.fontSize)
+            });
+        });
+
+        // B. Cập nhật vào mảng pages
+        pages[currentPageIndex].items = items;
+
+        // C. Chụp ảnh Thumbnail cho Sidebar
+        const temp = selectedEl; if(temp) temp.classList.remove('selected');
+        canvas.classList.add('exporting');
+        await waitImages();
+        const cv = await html2canvas(canvas, { scale: 0.1, logging: false });
+        pages[currentPageIndex].thumbnail = cv.toDataURL('image/jpeg', 0.5);
+        canvas.classList.remove('exporting');
+        if(temp) temp.classList.add('selected');
+
+        // D. Ghi vào IndexedDB
+        const db = await initDB();
+        const tx = db.transaction(storeName, "readwrite");
+        tx.objectStore(storeName).put(pages, "current_project");
+        
+        renderSidebar();
+        if(showAlert) alert("Đã lưu dữ liệu thành công!");
+    }
+
     window.onload = async () => {
-        localStorage.removeItem('poster_final_v3'); // Xóa sạch LocalStorage cũ cho đỡ lỗi
         const db = await initDB();
         const tx = db.transaction(storeName, "readonly");
-        const store = tx.objectStore(storeName);
-        const request = store.get("current_project");
-        
+        const request = tx.objectStore(storeName).get("current_project");
         request.onsuccess = () => {
-            if (request.result && request.result.length > 0) {
-                pages = request.result;
-            }
+            if (request.result && request.result.length > 0) pages = request.result;
             loadSlide(0);
         };
     };
 
-    // 3. Hàm tạo Item
+    function loadSlide(i) {
+        currentPageIndex = i;
+        canvas.innerHTML = '';
+        if (pages[i] && pages[i].items) {
+            pages[i].items.forEach(it => createItem(it.type, it.content, it));
+        }
+        renderSidebar();
+    }
+
     function createItem(type, content, data) {
         const div = document.createElement('div');
         div.className = 'item';
@@ -119,7 +168,7 @@
             <div class="resize-handle w"></div><div class="resize-handle e"></div>
             <div class="size-badge">${Math.round(data.w)} x ${Math.round(data.h)}</div>
             ${type === 'text' 
-                ? `<div class="text-content" contenteditable="true" style="color:${data.color}; font-size:${data.fontSize}px">${content}</div>`
+                ? `<div class="text-content" contenteditable="true" style="color:${data.color || '#000'}; font-size:${data.fontSize || 24}px">${content}</div>`
                 : `<img src="${content}" style="width:100%; height:100%; pointer-events:none; object-fit:fill;">` 
             }
         `;
@@ -128,7 +177,7 @@
         makeInteractable(div);
         
         if(type === 'text') {
-            div.querySelector('.text-content').addEventListener('blur', () => { updateThumbnail(); autoSave(); });
+            div.querySelector('.text-content').addEventListener('blur', () => saveData());
         }
         div.addEventListener('mousedown', (e) => { e.stopPropagation(); selectElement(div); });
     }
@@ -136,25 +185,25 @@
     function makeInteractable(el) {
         interact(el).draggable({
             listeners: { 
-                move(event) {
-                    let x = (parseFloat(el.getAttribute('data-x')) || 0) + event.dx;
-                    let y = (parseFloat(el.getAttribute('data-y')) || 0) + event.dy;
+                move(e) {
+                    let x = (parseFloat(el.getAttribute('data-x')) || 0) + e.dx;
+                    let y = (parseFloat(el.getAttribute('data-y')) || 0) + e.dy;
                     setTransform(el, x, y, el.getAttribute('data-angle'));
                 },
-                end() { updateThumbnail(); autoSave(); }
+                end() { saveData(); }
             }
         }).resizable({
             edges: { left: '.w, .nw, .sw', right: '.e, .ne, .se', bottom: '.s, .sw, .se', top: '.n, .nw, .ne' },
             listeners: { 
-                move(event) {
-                    let x = (parseFloat(el.getAttribute('data-x')) || 0) + event.deltaRect.left;
-                    let y = (parseFloat(el.getAttribute('data-y')) || 0) + event.deltaRect.top;
-                    el.style.width = event.rect.width + 'px';
-                    el.style.height = event.rect.height + 'px';
-                    el.querySelector('.size-badge').innerText = `${Math.round(event.rect.width)} x ${Math.round(event.rect.height)}`;
+                move(e) {
+                    let x = (parseFloat(el.getAttribute('data-x')) || 0) + e.deltaRect.left;
+                    let y = (parseFloat(el.getAttribute('data-y')) || 0) + e.deltaRect.top;
+                    el.style.width = e.rect.width + 'px';
+                    el.style.height = e.rect.height + 'px';
+                    el.querySelector('.size-badge').innerText = `${Math.round(e.rect.width)} x ${Math.round(e.rect.height)}`;
                     setTransform(el, x, y, el.getAttribute('data-angle'));
                 },
-                end() { updateThumbnail(); autoSave(); }
+                end() { saveData(); }
             }
         });
         
@@ -166,7 +215,7 @@
                 const angle = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI + 90;
                 setTransform(el, el.getAttribute('data-x'), el.getAttribute('data-y'), angle);
             },
-            onend: () => { updateThumbnail(); autoSave(); }
+            onend: () => { saveData(); }
         });
     }
 
@@ -175,132 +224,110 @@
         el.setAttribute('data-x', x); el.setAttribute('data-y', y); el.setAttribute('data-angle', angle);
     }
 
-    async function updateThumbnail() {
-        const temp = selectedEl; if(temp) temp.classList.remove('selected');
-        canvas.classList.add('exporting');
-        const cv = await html2canvas(canvas, { scale: 0.1 });
-        const thumb = cv.toDataURL('image/jpeg', 0.5);
-        pages[currentPageIndex].thumbnail = thumb;
-        renderSidebar();
-        canvas.classList.remove('exporting');
-        if(temp) temp.classList.add('selected');
-    }
-
     function renderSidebar() {
         const list = document.getElementById('slides-list');
         list.innerHTML = '';
         pages.forEach((p, i) => {
             const div = document.createElement('div');
             div.className = `slide-thumb ${i === currentPageIndex ? 'active' : ''}`;
-            div.innerHTML = `
-                <img src="${p.thumbnail || ''}" class="thumb-preview" id="prev-${i}">
-                <div class="slide-label">${i + 1}</div>
-                <button class="delete-slide" onclick="deleteSlide(event, ${i})">✕</button>
-            `;
-            div.onclick = () => { if(i !== currentPageIndex) loadSlide(i); };
+            div.innerHTML = `<img src="${p.thumbnail || ''}" class="thumb-preview"><div class="slide-label">${i + 1}</div>
+                             <button class="delete-slide" onclick="deleteSlide(event, ${i})">✕</button>`;
+            div.onclick = () => { if(i !== currentPageIndex) { saveData(); loadSlide(i); } };
             list.appendChild(div);
         });
     }
 
-    function loadSlide(i) {
-        saveCurrentToMemory();
-        currentPageIndex = i;
-        canvas.innerHTML = '';
-        if (pages[i].items) {
-            pages[i].items.forEach(item => createItem(item.type, item.content, item));
-        }
-        renderSidebar();
-    }
-
-    function addNewSlide() {
-        saveCurrentToMemory();
+    async function addNewSlide() {
+        await saveData();
         pages.push({ id: Date.now(), items: [], thumbnail: "" });
-        currentPageIndex = pages.length - 1;
-        canvas.innerHTML = '';
-        renderSidebar();
-        updateThumbnail();
-        autoSave();
+        loadSlide(pages.length - 1);
+        saveData();
     }
 
-    function deleteSlide(e, i) {
+    async function deleteSlide(e, i) {
         e.stopPropagation();
         if(pages.length > 1) {
             pages.splice(i, 1);
             currentPageIndex = 0;
             loadSlide(0);
-            autoSave();
+            saveData();
         }
-    }
-
-    function saveCurrentToMemory() {
-        const items = [];
-        document.querySelectorAll('.item').forEach(el => {
-            const isImg = el.querySelector('img');
-            items.push({
-                type: isImg ? 'image' : 'text',
-                content: isImg ? isImg.src : el.querySelector('.text-content').innerHTML,
-                x: parseFloat(el.getAttribute('data-x')), y: parseFloat(el.getAttribute('data-y')),
-                w: el.offsetWidth, h: el.offsetHeight, angle: parseFloat(el.getAttribute('data-angle')),
-                z: el.style.zIndex, color: isImg ? null : el.querySelector('.text-content').style.color,
-                fontSize: isImg ? null : parseInt(el.querySelector('.text-content').style.fontSize)
-            });
-        });
-        if(pages[currentPageIndex]) pages[currentPageIndex].items = items;
-    }
-
-    async function autoSave() {
-        saveCurrentToMemory();
-        const db = await initDB();
-        const tx = db.transaction(storeName, "readwrite");
-        tx.objectStore(storeName).put(pages, "current_project");
-    }
-
-    async function saveToStorage() {
-        await autoSave();
-        alert("Đã lưu vào Database!");
     }
 
     function createNewText() {
         createItem('text', "Nhập chữ...", { x:100, y:100, w:200, h:50, color: '#000000', fontSize: 24 });
-        updateThumbnail();
-        autoSave();
+        saveData();
     }
 
     document.getElementById("imgUpload").addEventListener("change", function(e) {
-        const files = e.target.files;
-        if(!files.length) return;
-        Array.from(files).forEach((file, index) => {
+        const files = Array.from(e.target.files);
+        files.forEach((file, index) => {
             const reader = new FileReader();
             reader.onload = (ev) => {
-                createItem('image', ev.target.result, { x: 50 + (index * 25), y: 50 + (index * 25), w: 300, h: 450 });
-                updateThumbnail();
-                autoSave();
+                createItem('image', ev.target.result, { x: 50+(index*20), y: 50+(index*20), w: 300, h: 450 });
+                saveData();
             };
             reader.readAsDataURL(file);
         });
         e.target.value = "";
     });
 
-    function selectElement(el) { deselectAll(); selectedEl = el; el.classList.add('selected'); }
-    function deselectAll(e) { if(e && e.target !== canvas && !e.target.classList.contains('editor-area')) return; document.querySelectorAll('.item').forEach(el => el.classList.remove('selected')); selectedEl = null; }
+    function selectElement(el) { 
+        deselectAll(); 
+        selectedEl = el; 
+        el.classList.add('selected');
+        const text = el.querySelector('.text-content');
+        if(text) {
+            document.getElementById('colorPicker').value = rgbToHex(text.style.color);
+            document.getElementById('sizePicker').value = parseInt(text.style.fontSize);
+        }
+    }
+    
+    function deselectAll(e) { 
+        if(e && e.target !== canvas && !e.target.classList.contains('editor-area')) return; 
+        document.querySelectorAll('.item').forEach(el => el.classList.remove('selected')); 
+        selectedEl = null; 
+    }
 
     function download() {
         deselectAll(); canvas.classList.add('exporting');
         html2canvas(canvas, { scale: 2, useCORS: true }).then(cv => {
             const link = document.createElement('a');
-            link.download = `slide-${currentPageIndex+1}.png`;
+            link.download = `poster-${Date.now()}.png`;
             link.href = cv.toDataURL(); link.click();
             canvas.classList.remove('exporting');
         });
     }
 
-    function bringToFront() { if (selectedEl) { selectedEl.style.zIndex = ++maxZIndex; updateThumbnail(); autoSave(); } }
+    function bringToFront() { if (selectedEl) { selectedEl.style.zIndex = ++maxZIndex; saveData(); } }
 
     window.addEventListener('keydown', (e) => { 
         if((e.key === "Delete" || e.key === "Backspace") && selectedEl && document.activeElement.contentEditable !== "true") { 
-            selectedEl.remove(); selectedEl = null; updateThumbnail(); autoSave(); 
+            selectedEl.remove(); selectedEl = null; saveData(); 
         } 
     });
+
+    document.getElementById('colorPicker').addEventListener('input', (e) => {
+        if(selectedEl && selectedEl.querySelector('.text-content')) {
+            selectedEl.querySelector('.text-content').style.color = e.target.value;
+            saveData();
+        }
+    });
+
+    document.getElementById('sizePicker').addEventListener('input', (e) => {
+        if(selectedEl && selectedEl.querySelector('.text-content')) {
+            selectedEl.querySelector('.text-content').style.fontSize = e.target.value + 'px';
+            saveData();
+        }
+    });
+
+    function rgbToHex(rgb) {
+        if(!rgb) return "#000000";
+        if(rgb.startsWith('#')) return rgb;
+        const rgbValues = rgb.match(/\d+/g);
+        if(!rgbValues) return "#000000";
+        return "#" + rgbValues.slice(0,3).map(x => parseInt(x).toString(16).padStart(2, '0')).join('');
+    }
 </script>
 </body>
 </html>
