@@ -2,287 +2,271 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thiết Kế Poster Phật Giáo - Chùa Phúc Minh</title>
-    
+    <title>Poster Editor Pro - Lớp Phủ Thông Minh</title>
     <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Roboto+Slab:wght@400;700&display=swap" rel="stylesheet">
-
     <style>
-        :root {
-            --primary: #d4af37;
-            --bg-dark: #0f172a;
-            --panel: #1e293b;
-        }
-
-        body {
-            margin: 0;
-            font-family: 'Roboto Slab', serif;
-            background: var(--bg-dark);
-            color: white;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        /* THANH ĐIỀU KHIỂN */
-        .toolbar {
-            width: 100%;
-            padding: 15px;
-            background: var(--panel);
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            flex-wrap: wrap;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-        }
-
-        .btn {
-            padding: 8px 15px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: 0.3s;
-        }
-
+        :root { --primary: #3b82f6; --bg: #0f172a; }
+        body { margin: 0; font-family: sans-serif; background: var(--bg); color: white; display: flex; flex-direction: column; align-items: center; }
+        
+        .toolbar { width: 100%; padding: 10px; background: #1e293b; display: flex; justify-content: center; gap: 10px; align-items: center; z-index: 9999; flex-wrap: wrap; border-bottom: 1px solid #334155; }
+        .btn { padding: 6px 14px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; }
         .btn-add { background: #3b82f6; color: white; }
+        .btn-save { background: #f59e0b; color: white; }
         .btn-export { background: #16a34a; color: white; }
-        .btn-danger { background: #ef4444; color: white; }
+        .btn-clear { background: #ef4444; color: white; }
 
-        .control-group {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(255,255,255,0.1);
-            padding: 5px 12px;
-            border-radius: 20px;
+        #canvas-container { padding: 30px; display: flex; justify-content: center; width: 100%; }
+        #canvas { 
+            width: 500px; height: 700px; background: #fdf6e3; position: relative; 
+            border: 1px solid #333; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
 
-        /* KHU VỰC THIẾT KẾ */
-        #canvas-container {
-            padding: 40px;
-            overflow: auto;
-            width: 100%;
-            display: flex;
-            justify-content: center;
+        .item { 
+            position: absolute; min-width: 30px; min-height: 30px; 
+            padding: 0; box-sizing: border-box; touch-action: none; 
+            transform-origin: center; cursor: move;
+            z-index: 1; /* Mặc định */
         }
 
-        #canvas {
-            width: 500px;
-            height: 750px;
-            background: #fdf6e3; /* Màu giấy cổ */
-            position: relative;
-            box-shadow: 0 0 40px rgba(0,0,0,0.8);
-            border: 12px double var(--primary);
-            background-image: radial-gradient(#fff9e6 1px, transparent 1px);
-            background-size: 20px 20px;
-        }
+        .item.selected { outline: 1.5px solid var(--primary); }
 
-        /* ĐỐI TƯỢNG TRÊN CANVAS */
-        .item {
-            position: absolute;
-            cursor: move;
-            touch-action: none;
-            user-select: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-        }
+        /* Nút xoay và 8 nút kéo */
+        .rotate-handle { display: none; position: absolute; top: -35px; left: 50%; transform: translateX(-50%); width: 12px; height: 12px; background: white; border: 2px solid var(--primary); border-radius: 50%; cursor: grab; }
+        .item.selected .rotate-handle { display: block; }
+        .item.selected .rotate-handle::after { content: ''; position: absolute; top: 12px; left: 5px; width: 2px; height: 23px; background: var(--primary); }
 
-        .text-item {
-            min-width: 50px;
-            padding: 5px;
-            outline: 1px dashed transparent;
-            word-wrap: break-word;
-        }
+        .resize-handle { display: none; position: absolute; width: 8px; height: 8px; background: white; border: 1.5px solid var(--primary); }
+        .item.selected .resize-handle { display: block; }
+        .nw { top: -5px; left: -5px; cursor: nw-resize; } .ne { top: -5px; right: -5px; cursor: ne-resize; }
+        .sw { bottom: -5px; left: -5px; cursor: sw-resize; } .se { bottom: -5px; right: -5px; cursor: se-resize; }
+        .n { top: -5px; left: calc(50% - 4px); cursor: n-resize; } .s { bottom: -5px; left: calc(50% - 4px); cursor: s-resize; }
+        .w { left: -5px; top: calc(50% - 4px); cursor: w-resize; } .e { right: -5px; top: calc(50% - 4px); cursor: e-resize; }
 
-        .text-item:focus {
-            outline: 2px dashed var(--primary);
-            background: rgba(212, 175, 55, 0.1);
-        }
-
-        .img-item img {
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-        }
-
-        /* Chế độ đang xuất ảnh (ẩn viền) */
-        .exporting .text-item { outline: none !important; }
+        .text-content { outline: none; width: 100%; height: 100%; text-align: center; color: #1e3a8a; padding: 5px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; }
+        .exporting .rotate-handle, .exporting .resize-handle { display: none !important; }
+        .exporting .selected { outline: none !important; }
     </style>
 </head>
 <body>
 
 <div class="toolbar">
-    <button class="btn btn-add" onclick="addText()">➕ Thêm Chữ</button>
-    <div class="control-group">
-        <label>Ảnh:</label>
-        <input type="file" id="imgUpload" accept="image/*">
+    <button class="btn btn-add" onclick="createNewText()">➕ Thêm Chữ</button>
+    <div style="background: #334155; padding: 4px 10px; border-radius: 4px; display: flex; gap: 8px; align-items: center;">
+        <label style="font-size: 11px;">Ảnh:</label>
+        <input type="file" id="imgUpload" style="font-size: 11px; width: 140px;">
     </div>
-    <div class="control-group">
-        <label>Màu:</label>
-        <input type="color" id="colorPicker" value="#1e3a8a" oninput="updateStyle()">
-    </div>
-    <div class="control-group">
-        <label>Cỡ:</label>
-        <input type="number" id="sizePicker" value="22" min="10" max="100" oninput="updateStyle()">
-    </div>
-    <button class="btn btn-export" onclick="download()">💾 Xuất Ảnh Sắc Nét</button>
+    <input type="color" id="colorPicker" value="#1e3a8a">
+    <input type="number" id="sizePicker" value="24" style="width: 45px;">
+    <button class="btn btn-save" onclick="saveData()">💾 Lưu Lại</button>
+    <button class="btn btn-export" onclick="download()">🖼️ Xuất Ảnh</button>
+    <button class="btn btn-clear" onclick="clearAll()">🗑️ Xóa Hết</button>
 </div>
 
 <div id="canvas-container">
-    <div id="canvas">
-        <div class="item text-item" style="top:20px; left:50px; width:500px; color:#b45309; font-weight:bold; text-decoration:underline; font-size:24px;">
-            THIỆN PHÁP CÚNG DƯỜNG TRAI TĂNG
-        </div>
-    </div>
+    <div id="canvas" onclick="deselectAll(event)"></div>
 </div>
 
 <script>
-    const canvas = document.getElementById("canvas");
-    let selectedElement = null;
+    let selectedEl = null;
+    let maxZIndex = 10; // Biến theo dõi lớp cao nhất
+    const canvas = document.getElementById('canvas');
 
-    // 1. THÊM CHỮ
-    function addText() {
-        const div = document.createElement("div");
-        div.className = "item text-item";
-        div.contentEditable = true;
-        div.innerText = "Nhấp để nhập nội dung...";
-        
-        // Thiết lập mặc định
-        div.style.top = "150px";
-        div.style.left = "150px";
-        div.style.width = "300px";
-        div.style.color = document.getElementById("colorPicker").value;
-        div.style.fontSize = document.getElementById("sizePicker").value + "px";
+    window.onload = () => {
+        loadData();
+        setInterval(saveData, 5000);
+    };
 
-        canvas.appendChild(div);
-        initInteract(div);
-        setupSelection(div);
+    // Hàm lấy Z-Index cao nhất hiện tại để đè lên
+    function getNextZIndex() {
+        maxZIndex++;
+        return maxZIndex;
     }
 
-    // 2. THÊM ẢNH
-    document.getElementById("imgUpload").addEventListener("change", function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
+    function createNewText(content = "Nhập nội dung...", x = 100, y = 100, angle = 0, w = 250, h = 60, color = null, size = null, z = null) {
+        const div = document.createElement('div');
+        div.className = 'item';
+        div.innerHTML = `
+            <div class="rotate-handle"></div>
+            <div class="resize-handle nw"></div><div class="resize-handle ne"></div>
+            <div class="resize-handle sw"></div><div class="resize-handle se"></div>
+            <div class="resize-handle n"></div><div class="resize-handle s"></div>
+            <div class="resize-handle w"></div><div class="resize-handle e"></div>
+            <div class="text-content" contenteditable="true">${content}</div>
+        `;
+        
+        const txt = div.querySelector('.text-content');
+        txt.style.color = color || document.getElementById('colorPicker').value;
+        txt.style.fontSize = (size || document.getElementById('sizePicker').value) + 'px';
+        
+        div.style.width = w + 'px';
+        div.style.height = h + 'px';
+        div.style.zIndex = z || getNextZIndex(); // Gán lớp mới cao hơn lớp cũ
+        
+        addTOStage(div, x, y, angle);
+    }
 
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            const container = document.createElement("div");
-            container.className = "item img-item";
-            container.style.width = "150px";
-            container.style.top = "100px";
-            container.style.left = "100px";
+    function addTOStage(el, x, y, angle) {
+        canvas.appendChild(el);
+        el.setAttribute('data-x', x);
+        el.setAttribute('data-y', y);
+        el.setAttribute('data-angle', angle);
+        el.style.transform = `translate(${x}px, ${y}px) rotate(${angle}deg)`;
+        
+        makeTransformable(el);
+        el.addEventListener('mousedown', (e) => { 
+            e.stopPropagation(); 
+            el.style.zIndex = getNextZIndex(); // Click vào là nhảy lên trước
+            selectElement(el); 
+        });
+    }
 
-            const img = document.createElement("img");
-            img.src = event.target.result;
-            
-            container.appendChild(img);
-            canvas.appendChild(container);
-            initInteract(container);
-            setupSelection(container);
-        };
-        reader.readAsDataURL(file);
-    });
-
-    // 3. ĐIỀU KHIỂN KÉO THẢ & THAY ĐỔI KÍCH THƯỚC (InteractJS)
-    function initInteract(el) {
+    function makeTransformable(el) {
         interact(el)
             .draggable({
                 listeners: {
                     move(event) {
-                        const target = event.target;
-                        const x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
-                        const y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
-                        target.style.transform = `translate(${x}px, ${y}px)`;
-                        target.setAttribute('data-x', x);
-                        target.setAttribute('data-y', y);
+                        let x = (parseFloat(el.getAttribute('data-x')) || 0) + event.dx;
+                        let y = (parseFloat(el.getAttribute('data-y')) || 0) + event.dy;
+                        let angle = parseFloat(el.getAttribute('data-angle')) || 0;
+                        el.style.transform = `translate(${x}px, ${y}px) rotate(${angle}deg)`;
+                        el.setAttribute('data-x', x);
+                        el.setAttribute('data-y', y);
                     }
                 }
             })
             .resizable({
-                edges: { left: true, right: true, bottom: true, top: true },
+                edges: { left: '.w, .nw, .sw', right: '.e, .ne, .se', bottom: '.s, .sw, .se', top: '.n, .nw, .ne' },
                 listeners: {
                     move(event) {
-                        let { x, y } = event.target.dataset;
-                        x = parseFloat(x) || 0;
-                        y = parseFloat(y) || 0;
-
-                        Object.assign(event.target.style, {
-                            width: `${event.rect.width}px`,
-                            height: `${event.rect.height}px`,
-                            transform: `translate(${x + event.deltaRect.left}px, ${y + event.deltaRect.top}px)`
-                        });
-
-                        Object.assign(event.target.dataset, {
-                            x: x + event.deltaRect.left,
-                            y: y + event.deltaRect.top
-                        });
+                        let x = parseFloat(el.getAttribute('data-x')) || 0;
+                        let y = parseFloat(el.getAttribute('data-y')) || 0;
+                        let angle = parseFloat(el.getAttribute('data-angle')) || 0;
+                        el.style.width = event.rect.width + 'px';
+                        el.style.height = event.rect.height + 'px';
+                        x += event.deltaRect.left; y += event.deltaRect.top;
+                        el.style.transform = `translate(${x}px, ${y}px) rotate(${angle}deg)`;
+                        el.setAttribute('data-x', x); el.setAttribute('data-y', y);
                     }
                 }
             });
-    }
 
-    // 4. QUẢN LÝ LỰA CHỌN
-    function setupSelection(el) {
-        el.addEventListener('mousedown', () => {
-            selectedElement = el;
-            // Cập nhật giá trị lên thanh công cụ nếu là text
-            if(el.classList.contains('text-item')) {
-                document.getElementById("colorPicker").value = rgbToHex(el.style.color);
-                document.getElementById("sizePicker").value = parseInt(el.style.fontSize);
+        interact(el.querySelector('.rotate-handle')).draggable({
+            onmove: (event) => {
+                const box = el.getBoundingClientRect();
+                const centerX = box.left + box.width / 2;
+                const centerY = box.top + box.height / 2;
+                const curAngle = Math.atan2(event.clientY - centerY, event.clientX - centerX);
+                let angle = curAngle * (180 / Math.PI) + 90;
+                let x = parseFloat(el.getAttribute('data-x')) || 0;
+                let y = parseFloat(el.getAttribute('data-y')) || 0;
+                el.style.transform = `translate(${x}px, ${y}px) rotate(${angle}deg)`;
+                el.setAttribute('data-angle', angle);
             }
-            // Đưa lên lớp trên cùng
-            document.querySelectorAll('.item').forEach(i => i.style.zIndex = 1);
-            el.style.zIndex = 10;
         });
     }
 
-    function updateStyle() {
-        if (selectedElement && selectedElement.classList.contains('text-item')) {
-            selectedElement.style.color = document.getElementById("colorPicker").value;
-            selectedElement.style.fontSize = document.getElementById("sizePicker").value + "px";
+    function saveData() {
+        const items = [];
+        document.querySelectorAll('.item').forEach(el => {
+            const isImg = el.querySelector('img');
+            items.push({
+                type: isImg ? 'image' : 'text',
+                content: isImg ? isImg.src : el.querySelector('.text-content').innerHTML,
+                x: parseFloat(el.getAttribute('data-x')) || 0,
+                y: parseFloat(el.getAttribute('data-y')) || 0,
+                angle: parseFloat(el.getAttribute('data-angle')) || 0,
+                width: el.offsetWidth,
+                height: el.offsetHeight,
+                zIndex: el.style.zIndex, // Lưu lại thứ tự lớp
+                color: isImg ? null : el.querySelector('.text-content').style.color,
+                fontSize: isImg ? null : el.querySelector('.text-content').style.fontSize
+            });
+        });
+        localStorage.setItem('poster_v3_data', JSON.stringify(items));
+    }
+
+    function loadData() {
+        const data = localStorage.getItem('poster_v3_data');
+        if (!data) return;
+        const items = JSON.parse(data);
+        items.forEach(item => {
+            if (item.type === 'text') {
+                createNewText(item.content, item.x, item.y, item.angle, item.width, item.height, item.color, parseInt(item.fontSize), item.zIndex);
+            } else {
+                createImageElement(item.content, item.x, item.y, item.angle, item.width, item.height, item.zIndex);
+            }
+            // Cập nhật lại maxZIndex để không bị trùng
+            if(parseInt(item.zIndex) > maxZIndex) maxZIndex = parseInt(item.zIndex);
+        });
+    }
+
+    function clearAll() {
+        if(confirm("Xóa hết thiết kế?")) {
+            canvas.innerHTML = "";
+            localStorage.removeItem('poster_v3_data');
+            maxZIndex = 10;
         }
     }
 
-    // 5. XUẤT ẢNH
+    function selectElement(el) {
+        deselectAll();
+        selectedEl = el;
+        el.classList.add('selected');
+    }
+
+    function deselectAll(e) {
+        if (e && e.target !== canvas) return;
+        document.querySelectorAll('.item').forEach(el => el.classList.remove('selected'));
+        selectedEl = null;
+    }
+
+    document.getElementById("imgUpload").addEventListener("change", function(e) {
+        const file = e.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => createImageElement(ev.target.result);
+        reader.readAsDataURL(file);
+    });
+
+    function createImageElement(src, x=100, y=100, angle=0, w=200, h=150, z=null) {
+        const div = document.createElement('div');
+        div.className = 'item';
+        div.innerHTML = `
+            <div class="rotate-handle"></div>
+            <div class="resize-handle nw"></div><div class="resize-handle ne"></div>
+            <div class="resize-handle sw"></div><div class="resize-handle se"></div>
+            <div class="resize-handle n"></div><div class="resize-handle s"></div>
+            <div class="resize-handle w"></div><div class="resize-handle e"></div>
+            <img src="${src}" style="width:100%; height:100%; pointer-events:none; display:block; object-fit:contain;">
+        `;
+        div.style.width = w + 'px';
+        div.style.height = h + 'px';
+        div.style.zIndex = z || getNextZIndex(); // Ảnh mới luôn có Z-Index cao hơn
+        addTOStage(div, x, y, angle);
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if ((e.key === "Delete" || e.key === "Backspace") && selectedEl) {
+            if (document.activeElement.contentEditable !== "true") {
+                selectedEl.remove();
+                selectedEl = null;
+                saveData();
+            }
+        }
+    });
+
     function download() {
+        deselectAll();
         canvas.classList.add('exporting');
-        html2canvas(canvas, {
-            scale: 3, // Xuất ảnh độ phân giải cao để in ấn
-            useCORS: true,
-            logging: false
-        }).then(resultCanvas => {
-            const link = document.createElement("a");
-            link.download = "ThienPhapCungDuong.png";
-            link.href = resultCanvas.toDataURL("image/png");
+        html2canvas(canvas, { scale: 3, useCORS: true }).then(cv => {
+            const link = document.createElement('a');
+            link.download = 'thiet-ke.png';
+            link.href = cv.toDataURL();
             link.click();
             canvas.classList.remove('exporting');
         });
     }
-
-    // Hàm phụ chuyển đổi màu
-    function rgbToHex(rgb) {
-        if (!rgb) return "#1e3a8a";
-        if (rgb.startsWith('#')) return rgb;
-        const rgbValues = rgb.match(/\d+/g);
-        if (!rgbValues) return "#1e3a8a";
-        return "#" + rgbValues.slice(0, 3).map(x => {
-            const hex = parseInt(x).toString(16);
-            return hex.length === 1 ? "0" + hex : hex;
-        }).join("");
-    }
-
-    // Khởi tạo cho các phần tử có sẵn
-    document.querySelectorAll('.item').forEach(initInteract);
-    document.querySelectorAll('.item').forEach(setupSelection);
 </script>
-
 </body>
 </html>
