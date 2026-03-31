@@ -2,22 +2,28 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Poster Editor Pro v15 - Advanced Text Selection</title>
+    <title>Poster Editor Pro v15 - Full 8 Handles</title>
     <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <style>
         :root { --primary: #3b82f6; --bg: #0f172a; --sidebar-w: 220px; }
         body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: white; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
-        .toolbar { height: 70px; background: #1e293b; display: flex; align-items: center; gap: 10px; padding: 0 15px; border-bottom: 1px solid #334155; z-index: 100; flex-wrap: nowrap; overflow-x: auto; }
+        .toolbar { height: 80px; background: #1e293b; display: flex; align-items: center; gap: 12px; padding: 0 15px; border-bottom: 1px solid #334155; z-index: 100; overflow-x: auto; }
         .btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; color: white; transition: 0.2s; display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
         .btn-blue { background: #3b82f6; }
         .btn-purple { background: #8b5cf6; }
         .btn-orange { background: #f59e0b; }
         .btn-green { background: #16a34a; }
 
-        .text-controls { display: flex; align-items: center; gap: 8px; background: #334155; padding: 5px 10px; border-radius: 6px; font-size: 11px; flex-shrink: 0; }
-        .text-controls input[type="range"] { width: 60px; cursor: pointer; accent-color: var(--primary); }
+        .text-controls { display: flex; align-items: center; gap: 10px; background: #334155; padding: 8px 12px; border-radius: 8px; font-size: 11px; flex-shrink: 0; }
+        .control-group { display: flex; flex-direction: column; gap: 4px; align-items: center; }
+        
+        .text-controls input[type="number"] { 
+            width: 55px; background: #1e293b; color: #60a5fa; border: 1px solid #475569; 
+            border-radius: 4px; padding: 3px; text-align: center; font-weight: bold; outline: none;
+        }
+        .text-controls span { color: #94a3b8; font-size: 10px; text-transform: uppercase; }
 
         .main-container { display: flex; flex: 1; overflow: hidden; }
         .sidebar { width: var(--sidebar-w); background: #1e293b; border-right: 1px solid #334155; display: flex; flex-direction: column; padding: 15px; gap: 15px; overflow-y: auto; }
@@ -27,21 +33,26 @@
         .thumb-preview { width: 100%; height: 100%; object-fit: contain; }
 
         .editor-area { flex: 1; display: flex; justify-content: center; align-items: flex-start; padding: 40px; overflow: auto; background: #020617; }
-        #canvas { width: 500px; height: 700px; background: transparent; position: relative; box-shadow: 0 0 40px rgba(0,0,0,0.8); flex-shrink: 0; outline: 1px dashed rgba(255, 255, 255, 0.3); }
+        #canvas { width: 500px; height: 700px; background: white; position: relative; box-shadow: 0 0 40px rgba(0,0,0,0.8); flex-shrink: 0; }
 
         .item { position: absolute; box-sizing: border-box; touch-action: none; }
         .item.selected { outline: 2px solid var(--primary); }
         
-        .resize-handle { display: none; position: absolute; width: 12px; height: 12px; background: white; border: 2px solid var(--primary); z-index: 100; border-radius: 2px; }
+        /* CSS cho 8 nút kéo */
+        .resize-handle { display: none; position: absolute; width: 4px; height: 4px; background: red; border: 1px solid var(--primary); z-index: 100;border-radius: 50px;  }
         .item.selected .resize-handle, .item.selected .rotate-handle { display: block; }
+        
+        .nw { top: -5px; left: -5px; cursor: nw-resize; }
+        .ne { top: -5px; right: -5px; cursor: ne-resize; }
+        .sw { bottom: -5px; left: -5px; cursor: sw-resize; }
+        .se { bottom: -5px; right: -5px; cursor: se-resize; }
+        .n { top: -5px; left: 50%; transform: translateX(-50%); cursor: n-resize; }
+        .s { bottom: -5px; left: 50%; transform: translateX(-50%); cursor: s-resize; }
+        .w { left: -5px; top: 50%; transform: translateY(-50%); cursor: w-resize; }
+        .e { right: -5px; top: 50%; transform: translateY(-50%); cursor: e-resize; }
 
-        .nw { top: -6px; left: -6px; cursor: nw-resize; } .ne { top: -6px; right: -6px; cursor: ne-resize; }
-        .sw { bottom: -6px; left: -6px; cursor: sw-resize; } .se { bottom: -6px; right: -6px; cursor: se-resize; }
-        .n { top: -6px; left: 50%; transform: translateX(-50%); cursor: n-resize; } .s { bottom: -6px; left: 50%; transform: translateX(-50%); cursor: s-resize; }
-        .w { left: -6px; top: 50%; transform: translateY(-50%); cursor: w-resize; } .e { right: -6px; top: 50%; transform: translateY(-50%); cursor: e-resize; }
-        .rotate-handle { display: none; position: absolute; top: -35px; left: 50%; transform: translateX(-50%); width: 20px; height: 20px; background: #fbbf24; border: 2px solid #000; border-radius: 50%; cursor: grab; z-index: 101; }
+        .rotate-handle { display: none; position: absolute; top: -30px; left: 50%; transform: translateX(-50%); width: 16px; height: 16px; background: #fbbf24; border: 1px solid #000; border-radius: 50%; cursor: grab; z-index: 101; }
 
-        /* FIX: Dãn dòng cực nhỏ để đan xen */
         .text-content { 
             outline: none; width: 100%; height: 100%; 
             display: flex; flex-direction: column; justify-content: center; 
@@ -49,7 +60,7 @@
             word-break: break-word; white-space: pre-wrap;
             line-height: 1.2;
         }
-        .text-content div, .text-content p { margin: 0; padding: 0; min-height: 0.5em; }
+        .text-content div, .text-content p { margin: 0; padding: 0; transition: margin 0.1s; min-height: 1em; }
 
         .exporting .resize-handle, .exporting .rotate-handle, .exporting .selected { display: none !important; }
     </style>
@@ -60,20 +71,25 @@
     <button class="btn btn-blue" onclick="createNewText()">➕ Chữ</button>
     <button class="btn btn-blue" onclick="document.getElementById('imgUpload').click()">🖼️ Ảnh</button>
     <input type="file" id="imgUpload" style="display:none" multiple accept="image/*">
-    <button class="btn btn-purple" onclick="bringToFront()">🔝 Đưa ảnh ra trước </button>
+    <button class="btn btn-purple" onclick="bringToFront()">🔝 Lên Trên</button>
     
     <div class="text-controls">
-        <span>Cỡ chữ:</span>
-        <input type="range" id="fontSizeInput" min="10" max="300" value="24" oninput="updateSelectionStyle('fontSize', this.value + 'px')">
-        
-        <span>Dãn dòng (giữa):</span>
-        <input type="range" id="lineHeightInput" min="0.2" max="3" step="0.1" value="1.2" oninput="updateSpacing()">
-        
-        <span>Căn trên:</span>
-        <input type="range" id="marginTopInput" min="-100" max="100" value="0" oninput="updateLineMargin('marginTop', this.value + 'px')">
-        
-        <span>Căn dưới:</span>
-        <input type="range" id="marginBottomInput" min="-100" max="100" value="0" oninput="updateLineMargin('marginBottom', this.value + 'px')">
+        <div class="control-group">
+            <span>Size (px)</span>
+            <input type="number" id="fontSizeInput" value="24" min="1" oninput="updateSelectionStyle('fontSize', this.value + 'px')">
+        </div>
+        <div class="control-group">
+            <span>Dãn dòng</span>
+            <input type="number" id="lineHeightInput" value="1.2" min="0.1" step="0.1" oninput="updateSpacing()">
+        </div>
+        <div class="control-group">
+            <span>Căn trên</span>
+            <input type="number" id="marginTopInput" value="0" step="1" oninput="updateLineMargin('marginTop', this.value + 'px')">
+        </div>
+        <div class="control-group">
+            <span>Căn dưới</span>
+            <input type="number" id="marginBottomInput" value="0" step="1" oninput="updateLineMargin('marginBottom', this.value + 'px')">
+        </div>
     </div>
 
     <input type="color" id="colorPicker" title="Màu chữ">
@@ -96,9 +112,20 @@
     let currentPageIndex = 0;
     let selectedEl = null;
     let maxZIndex = 1000;
+    let lastRange = null; 
     const canvas = document.getElementById('canvas');
-    const dbName = "PosterDB_v15"; 
+    const dbName = "PosterDB_v15_Final"; 
     const storeName = "projects";
+
+    document.addEventListener('selectionchange', () => {
+        const sel = window.getSelection();
+        if (sel.rangeCount > 0) {
+            const range = sel.getRangeAt(0);
+            if (canvas.contains(range.commonAncestorContainer)) {
+                lastRange = range.cloneRange();
+            }
+        }
+    });
 
     function initDB() {
         return new Promise((res) => {
@@ -108,39 +135,37 @@
         });
     }
 
-    // 1. CHỈ THAY ĐỔI CỠ CHỮ VÙNG BÔI ĐEN
     function updateSelectionStyle(prop, val) {
         const sel = window.getSelection();
-        if (!sel.isCollapsed && sel.rangeCount > 0) {
-            // Nếu có bôi đen, dùng execCommand hoặc bọc thẻ span
-            document.execCommand('styleWithCSS', false, true);
-            if (prop === 'fontSize') {
-                // Chế độ nâng cao: bọc vùng chọn vào span để kiểm soát chính xác px
-                const range = sel.getRangeAt(0);
-                const span = document.createElement('span');
-                span.style.fontSize = val;
-                range.surroundContents(span);
-            }
+        if (lastRange && !lastRange.collapsed) {
+            sel.removeAllRanges();
+            sel.addRange(lastRange);
+            const span = document.createElement('span');
+            span.style[prop] = val;
+            try {
+                const fragment = lastRange.extractContents();
+                span.appendChild(fragment);
+                lastRange.insertNode(span);
+            } catch (e) {}
             saveData();
         } else if (selectedEl) {
-            // Nếu không bôi đen, đổi cả khung
             const text = selectedEl.querySelector('.text-content');
             if (text) { text.style[prop] = val; saveData(); }
         }
     }
 
-    // 2. CHỈNH KHOẢNG CÁCH DÒNG BÔI ĐEN (Dùng Margin Âm để đan xen)
     function updateLineMargin(prop, val) {
-        const sel = window.getSelection();
-        if (!sel.rangeCount) return;
-        let container = sel.anchorNode;
-        if (container.nodeType === 3) container = container.parentNode;
-        
-        // Tìm thẻ div hoặc p chứa dòng đó
-        const lineEl = container.closest('.text-content > div, .text-content > p') || container;
-        if (lineEl && lineEl.parentNode && lineEl.parentNode.classList.contains('text-content')) {
-            lineEl.style[prop] = val;
-            saveData();
+        let targetNode = null;
+        if (lastRange) { targetNode = lastRange.startContainer; } 
+        else {
+            const sel = window.getSelection();
+            if (sel.rangeCount > 0) targetNode = sel.getRangeAt(0).startContainer;
+        }
+        if (targetNode) {
+            if (targetNode.nodeType === 3) targetNode = targetNode.parentNode;
+            const lineEl = targetNode.closest('.text-content > div, .text-content > p') || 
+                           (targetNode.parentElement && targetNode.parentElement.classList.contains('text-content') ? targetNode : null);
+            if (lineEl) { lineEl.style[prop] = val; saveData(); }
         }
     }
 
@@ -172,12 +197,14 @@
             });
         });
         if(pages[currentPageIndex]) pages[currentPageIndex].items = items;
+        
         const temp = selectedEl; if(temp) temp.classList.remove('selected');
         canvas.classList.add('exporting');
-        const cv = await html2canvas(canvas, { scale: 0.3, useCORS: true, backgroundColor: "#ffffff" });
-        if(pages[currentPageIndex]) pages[currentPageIndex].thumbnail = cv.toDataURL('image/jpeg', 0.8);
+        const cv = await html2canvas(canvas, { scale: 0.2, useCORS: true, backgroundColor: "#ffffff" });
+        if(pages[currentPageIndex]) pages[currentPageIndex].thumbnail = cv.toDataURL('image/jpeg', 0.6);
         canvas.classList.remove('exporting');
         if(temp) temp.classList.add('selected');
+        
         const db = await initDB();
         const tx = db.transaction(storeName, "readwrite");
         tx.objectStore(storeName).put(pages, "current_project");
@@ -195,7 +222,7 @@
     function loadSlide(i) {
         currentPageIndex = i;
         canvas.innerHTML = '';
-        if(pages[i]) pages[i].items.forEach(it => createItem(it.type, it.content, it));
+        if(pages[i] && pages[i].items) pages[i].items.forEach(it => createItem(it.type, it.content, it));
         renderSidebar();
     }
 
@@ -206,10 +233,9 @@
         div.style.zIndex = data.z || ++maxZIndex;
         div.innerHTML = `
             <div class="rotate-handle"></div>
-            <div class="resize-handle nw"></div><div class="resize-handle ne"></div>
-            <div class="resize-handle sw"></div><div class="resize-handle se"></div>
-            <div class="resize-handle n"></div><div class="resize-handle s"></div>
+            <div class="resize-handle nw"></div><div class="resize-handle n"></div><div class="resize-handle ne"></div>
             <div class="resize-handle w"></div><div class="resize-handle e"></div>
+            <div class="resize-handle sw"></div><div class="resize-handle s"></div><div class="resize-handle se"></div>
             ${type === 'text' 
                 ? `<div class="text-content" contenteditable="true" spellcheck="false" style="color:${data.color || '#000000'}; font-size:${data.fontSize || '24px'}; line-height:${data.lineHeight || 1.2}">${content}</div>`
                 : `<img src="${content}" style="width:100%; height:100%; pointer-events:none; object-fit:fill;">` 
@@ -228,9 +254,9 @@
                 let x = (parseFloat(el.getAttribute('data-x')) || 0) + e.dx;
                 let y = (parseFloat(el.getAttribute('data-y')) || 0) + e.dy;
                 setTransform(el, x, y, el.getAttribute('data-angle'));
-            },
-            onend: () => saveData()
+            }
         }).resizable({
+            // Kích hoạt tất cả 8 hướng
             edges: { left: '.w, .nw, .sw', right: '.e, .ne, .se', bottom: '.s, .sw, .se', top: '.n, .nw, .ne' },
             onmove: (e) => {
                 let x = (parseFloat(el.getAttribute('data-x')) || 0) + e.deltaRect.left;
@@ -238,8 +264,7 @@
                 el.style.width = e.rect.width + 'px';
                 el.style.height = e.rect.height + 'px';
                 setTransform(el, x, y, el.getAttribute('data-angle'));
-            },
-            onend: () => saveData()
+            }
         });
         interact(el.querySelector('.rotate-handle')).draggable({
             onmove: (e) => {
@@ -248,8 +273,7 @@
                 const cy = rect.top + rect.height / 2;
                 const angle = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI + 90;
                 setTransform(el, el.getAttribute('data-x'), el.getAttribute('data-y'), angle);
-            },
-            onend: () => saveData()
+            }
         });
     }
 
@@ -260,6 +284,11 @@
 
     function selectElement(el) { 
         deselectAll(); selectedEl = el; el.classList.add('selected'); 
+        const text = el.querySelector('.text-content');
+        if(text) {
+            document.getElementById('fontSizeInput').value = parseInt(text.style.fontSize) || 24;
+            document.getElementById('lineHeightInput').value = text.style.lineHeight || 1.2;
+        }
     }
 
     function deselectAll(e) { 
@@ -268,7 +297,7 @@
         selectedEl = null; 
     }
 
-    function createNewText() { createItem('text', "<div>Dòng 1</div><div>Dòng 2</div>", { x:100, y:100, w:250, h:100 }); saveData(); }
+    function createNewText() { createItem('text', "<div>Dòng số một</div><div>Dòng số hai</div>", { x:100, y:100, w:250, h:100 }); saveData(); }
 
     function addNewSlide() {
         saveData();
@@ -290,7 +319,7 @@
 
     function download() {
         deselectAll();
-        html2canvas(canvas, { scale: 2, backgroundColor: null }).then(cv => {
+        html2canvas(canvas, { scale: 2, backgroundColor: "#ffffff" }).then(cv => {
             const link = document.createElement('a');
             link.download = `poster.png`;
             link.href = cv.toDataURL(); link.click();
