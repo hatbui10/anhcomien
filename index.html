@@ -2,14 +2,13 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Poster Editor Pro - Clean UI</title>
+    <title>Poster Editor Pro - PowerPoint Style</title>
     <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <style>
-        :root { --primary: #3b82f6; --bg: #0f172a; --sidebar-w: 180px; }
+        :root { --primary: #3b82f6; --bg: #0f172a; --sidebar-w: 220px; }
         body { margin: 0; font-family: sans-serif; background: var(--bg); color: white; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
-        /* Toolbar gọn gàng */
         .toolbar { height: 60px; background: #1e293b; display: flex; align-items: center; gap: 12px; padding: 0 20px; border-bottom: 1px solid #334155; z-index: 100; }
         .btn { padding: 8px 14px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; color: white; transition: 0.2s; }
         .btn-add { background: #3b82f6; }
@@ -20,11 +19,37 @@
 
         .main-container { display: flex; flex: 1; overflow: hidden; }
         
-        /* Sidebar Slides */
-        .sidebar { width: var(--sidebar-w); background: #1e293b; border-right: 1px solid #334155; display: flex; flex-direction: column; padding: 10px; gap: 10px; overflow-y: auto; }
-        .slide-thumb { width: 100%; aspect-ratio: 5/7; background: #475569; border: 2px solid transparent; border-radius: 4px; cursor: pointer; position: relative; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #cbd5e1; flex-shrink: 0; }
-        .slide-thumb.active { border-color: var(--primary); background: #334155; }
-        .delete-slide { position: absolute; top: 2px; right: 2px; background: rgba(239, 68, 68, 0.8); color: white; border: none; border-radius: 3px; font-size: 10px; cursor: pointer; display: none; }
+        /* Sidebar kiểu PowerPoint */
+        .sidebar { width: var(--sidebar-w); background: #1e293b; border-right: 1px solid #334155; display: flex; flex-direction: column; padding: 15px; gap: 15px; overflow-y: auto; }
+        
+        .slide-thumb {
+            width: 100%;
+            aspect-ratio: 5/7;
+            background: #eee;
+            border: 3px solid #475569;
+            border-radius: 4px;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: 0.2s;
+            flex-shrink: 0;
+        }
+
+        .slide-thumb.active {
+            border-color: var(--primary) !important;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+            transform: scale(1.02);
+        }
+
+        .thumb-preview { width: 100%; height: 100%; object-fit: contain; display: block; pointer-events: none; }
+
+        .slide-label {
+            position: absolute; bottom: 5px; left: 5px;
+            background: rgba(0,0,0,0.6); color: white;
+            padding: 2px 6px; font-size: 10px; border-radius: 10px;
+        }
+
+        .delete-slide { position: absolute; top: 5px; right: 5px; background: rgba(239, 68, 68, 0.9); color: white; border: none; border-radius: 3px; font-size: 10px; cursor: pointer; display: none; z-index: 5; }
         .slide-thumb:hover .delete-slide { display: block; }
 
         /* Canvas Area */
@@ -35,7 +60,6 @@
         .item { position: absolute; box-sizing: border-box; touch-action: none; cursor: move; }
         .item.selected { outline: 1.5px solid var(--primary); }
 
-        /* Ô HIỂN THỊ KÍCH THƯỚC Ở GÓC PHẦN TỬ */
         .size-badge {
             position: absolute; bottom: -22px; right: 0; background: rgba(0,0,0,0.8);
             color: white; font-size: 10px; padding: 2px 6px; border-radius: 3px;
@@ -44,19 +68,20 @@
         }
         .item.selected .size-badge { display: block; }
 
-        /* Handles siêu nhỏ và sát viền */
-        .resize-handle { display: none; position: absolute; width: 6px; height: 6px; background: red; border: 1px solid var(--primary); z-index: 10; }
+        .resize-handle { display: none; position: absolute; width: 8px; height: 8px; background: white; border: 1px solid var(--primary); z-index: 10; }
         .item.selected .resize-handle { display: block; }
         
-        .nw { top: -3px; left: -3px; cursor: nw-resize; } .ne { top: -3px; right: -3px; cursor: ne-resize; }
-        .sw { bottom: -3px; left: -3px; cursor: sw-resize; } .se { bottom: -3px; right: -3px; cursor: se-resize; }
-        .n { top: -3px; left: calc(50% - 3px); cursor: n-resize; } .s { bottom: -3px; left: calc(50% - 3px); cursor: s-resize; }
-        .w { left: -3px; top: calc(50% - 3px); cursor: w-resize; } .e { right: -3px; top: calc(50% - 3px); cursor: e-resize; }
+        .nw { top: -4px; left: -4px; cursor: nw-resize; } .ne { top: -4px; right: -4px; cursor: ne-resize; }
+        .sw { bottom: -4px; left: -4px; cursor: sw-resize; } .se { bottom: -4px; right: -4px; cursor: se-resize; }
+        .n { top: -4px; left: calc(50% - 4px); cursor: n-resize; } .s { bottom: -4px; left: calc(50% - 4px); cursor: s-resize; }
+        .w { left: -4px; top: calc(50% - 4px); cursor: w-resize; } .e { right: -4px; top: calc(50% - 4px); cursor: e-resize; }
 
         .rotate-handle { display: none; position: absolute; top: -25px; left: 50%; transform: translateX(-50%); width: 12px; height: 12px; background: white; border: 2px solid var(--primary); border-radius: 50%; cursor: crosshair; }
         .item.selected .rotate-handle { display: block; }
 
-        .text-content { outline: none; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; text-align: center; }
+        .text-content { outline: none; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; text-align: center; word-break: break-word; }
+        
+        /* Ẩn rác khi xuất ảnh hoặc chụp thumbnail */
         .exporting .rotate-handle, .exporting .resize-handle, .exporting .size-badge { display: none !important; }
         .exporting .selected { outline: none !important; }
     </style>
@@ -65,12 +90,15 @@
 
 <div class="toolbar">
     <button class="btn btn-add" onclick="createNewText()">➕ Thêm Chữ</button>
-    <input type="file" id="imgUpload" style="display:none">
-    <button class="btn btn-add" onclick="document.getElementById('imgUpload').click()">🖼️ Thêm Ảnh</button>
+   <input type="file" id="imgUpload" style="display:none" multiple>
+   
+       <button class="btn btn-add" onclick="document.getElementById('imgUpload').click()">🖼️ Thêm Ảnh</button>
     <button class="btn btn-layer" onclick="bringToFront()">🔝 Ra phía trước</button>
     
-    <div style="flex-grow: 1;"></div> <input type="color" id="colorPicker" value="#1e3a8a" title="Màu chữ">
-    <input type="number" id="sizePicker" value="24" style="width: 45px;" title="Cỡ chữ">
+    <div style="flex-grow: 1;"></div> 
+    
+    <input type="color" id="colorPicker" value="#1e3a8a" title="Màu chữ">
+    <input type="number" id="sizePicker" value="24" style="width: 50px;" title="Cỡ chữ">
     
     <button class="btn btn-save" onclick="saveToStorage()">💾 Lưu Lại</button>
     <button class="btn btn-export" onclick="download()">🖼️ Xuất Ảnh</button>
@@ -87,21 +115,24 @@
 </div>
 
 <script>
-    let pages = [{ id: Date.now(), items: [] }];
+    let pages = [{ id: Date.now(), items: [], thumbnail: "" }];
     let currentPageIndex = 0;
     let selectedEl = null;
     let maxZIndex = 100;
     const canvas = document.getElementById('canvas');
 
     window.onload = () => {
-        const saved = localStorage.getItem('poster_final_v1');
+        const saved = localStorage.getItem('poster_final_v2');
         if (saved) pages = JSON.parse(saved);
         renderSidebar();
         loadSlide(0);
     };
 
     function bringToFront() {
-        if (selectedEl) selectedEl.style.zIndex = ++maxZIndex;
+        if (selectedEl) {
+            selectedEl.style.zIndex = ++maxZIndex;
+            updateThumbnail();
+        }
     }
 
     function createItem(type, content, data) {
@@ -127,29 +158,38 @@
         canvas.appendChild(div);
         setTransform(div, data.x, data.y, data.angle || 0);
         makeInteractable(div);
+        
+        // Cập nhật thumbnail khi sửa chữ trực tiếp
+        if(type === 'text') {
+            div.querySelector('.text-content').addEventListener('input', updateThumbnail);
+        }
+
         div.addEventListener('mousedown', (e) => { e.stopPropagation(); selectElement(div); });
     }
 
     function makeInteractable(el) {
         interact(el).draggable({
-            listeners: { move(event) {
-                let x = (parseFloat(el.getAttribute('data-x')) || 0) + event.dx;
-                let y = (parseFloat(el.getAttribute('data-y')) || 0) + event.dy;
-                setTransform(el, x, y, el.getAttribute('data-angle'));
-            }}
+            listeners: { 
+                move(event) {
+                    let x = (parseFloat(el.getAttribute('data-x')) || 0) + event.dx;
+                    let y = (parseFloat(el.getAttribute('data-y')) || 0) + event.dy;
+                    setTransform(el, x, y, el.getAttribute('data-angle'));
+                },
+                end() { updateThumbnail(); }
+            }
         }).resizable({
             edges: { left: '.w, .nw, .sw', right: '.e, .ne, .se', bottom: '.s, .sw, .se', top: '.n, .nw, .ne' },
-            listeners: { move(event) {
-                let x = (parseFloat(el.getAttribute('data-x')) || 0) + event.deltaRect.left;
-                let y = (parseFloat(el.getAttribute('data-y')) || 0) + event.deltaRect.top;
-                el.style.width = event.rect.width + 'px';
-                el.style.height = event.rect.height + 'px';
-                
-                // Cập nhật ô kích thước ở góc ảnh
-                el.querySelector('.size-badge').innerText = `${Math.round(event.rect.width)} x ${Math.round(event.rect.height)}`;
-                
-                setTransform(el, x, y, el.getAttribute('data-angle'));
-            }}
+            listeners: { 
+                move(event) {
+                    let x = (parseFloat(el.getAttribute('data-x')) || 0) + event.deltaRect.left;
+                    let y = (parseFloat(el.getAttribute('data-y')) || 0) + event.deltaRect.top;
+                    el.style.width = event.rect.width + 'px';
+                    el.style.height = event.rect.height + 'px';
+                    el.querySelector('.size-badge').innerText = `${Math.round(event.rect.width)} x ${Math.round(event.rect.height)}`;
+                    setTransform(el, x, y, el.getAttribute('data-angle'));
+                },
+                end() { updateThumbnail(); }
+            }
         });
 
         interact(el.querySelector('.rotate-handle')).draggable({
@@ -159,7 +199,8 @@
                 const cy = rect.top + rect.height / 2;
                 const angle = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI + 90;
                 setTransform(el, el.getAttribute('data-x'), el.getAttribute('data-y'), angle);
-            }
+            },
+            onend: () => { updateThumbnail(); }
         });
     }
 
@@ -168,30 +209,64 @@
         el.setAttribute('data-x', x); el.setAttribute('data-y', y); el.setAttribute('data-angle', angle);
     }
 
-    function createNewText() {
-        createItem('text', "Nhập nội dung...", { x:100, y:100, w:180, h:50, color:document.getElementById('colorPicker').value, fontSize:document.getElementById('sizePicker').value });
+    function updateThumbnail() {
+        // Tạm thời bỏ chọn để ảnh chụp đẹp hơn
+        const tempSelected = selectedEl;
+        if(tempSelected) tempSelected.classList.remove('selected');
+        canvas.classList.add('exporting');
+
+        html2canvas(canvas, { scale: 0.2, logging: false }).then(cv => {
+            const thumb = cv.toDataURL('image/jpeg', 0.6);
+            pages[currentPageIndex].thumbnail = thumb;
+            const thumbImg = document.getElementById(`prev-${currentPageIndex}`);
+            if(thumbImg) thumbImg.src = thumb;
+            
+            // Trả lại trạng thái cũ
+            canvas.classList.remove('exporting');
+            if(tempSelected) tempSelected.classList.add('selected');
+        });
     }
 
-    // Slide Management
     function renderSidebar() {
         const list = document.getElementById('slides-list');
         list.innerHTML = '';
         pages.forEach((p, i) => {
             const div = document.createElement('div');
             div.className = `slide-thumb ${i === currentPageIndex ? 'active' : ''}`;
-            div.innerHTML = `Trang ${i+1} <button class="delete-slide" onclick="deleteSlide(event,${i})">✕</button>`;
-            div.onclick = () => loadSlide(i);
+            div.innerHTML = `
+                <img src="${p.thumbnail || ''}" class="thumb-preview" id="prev-${i}">
+                <div class="slide-label">${i + 1}</div>
+                <button class="delete-slide" onclick="deleteSlide(event, ${i})">✕</button>
+            `;
+            div.onclick = () => { if(i !== currentPageIndex) loadSlide(i); };
             list.appendChild(div);
         });
     }
 
-    function addNewSlide() { saveCurrent(); pages.push({id:Date.now(), items:[]}); currentPageIndex=pages.length-1; renderSidebar(); loadSlide(currentPageIndex); }
-    function deleteSlide(e, i) { e.stopPropagation(); if(pages.length>1) { pages.splice(i,1); currentPageIndex=0; renderSidebar(); loadSlide(0); } }
-
     function loadSlide(i) {
-        saveCurrent(); currentPageIndex = i; canvas.innerHTML = '';
-        pages[i].items.forEach(item => createItem(item.type, item.content, item));
+        saveCurrent();
+        currentPageIndex = i;
+        canvas.innerHTML = '';
+        if (pages[i].items) {
+            pages[i].items.forEach(item => createItem(item.type, item.content, item));
+        }
         renderSidebar();
+    }
+
+    function addNewSlide() {
+        saveCurrent();
+        pages.push({ id: Date.now(), items: [], thumbnail: "" });
+        currentPageIndex = pages.length - 1;
+        loadSlide(currentPageIndex);
+    }
+
+    function deleteSlide(e, i) {
+        e.stopPropagation();
+        if(pages.length > 1) {
+            pages.splice(i, 1);
+            currentPageIndex = 0;
+            loadSlide(0);
+        }
     }
 
     function saveCurrent() {
@@ -207,33 +282,105 @@
                 fontSize: isImg ? null : parseInt(el.querySelector('.text-content').style.fontSize)
             });
         });
-        if(pages[currentPageIndex]) pages[currentPageIndex].items = items;
+        pages[currentPageIndex].items = items;
     }
 
-    function saveToStorage() { saveCurrent(); localStorage.setItem('poster_final_v1', JSON.stringify(pages)); alert("Đã lưu thiết kế!"); }
-    function selectElement(el) { deselectAll(); selectedEl = el; el.classList.add('selected'); }
-    function deselectAll(e) { if(e && e.target !== canvas && !e.target.classList.contains('editor-area')) return; document.querySelectorAll('.item').forEach(el=>el.classList.remove('selected')); selectedEl=null; }
+    function createNewText() {
+        createItem('text', "Nhập nội dung...", { 
+            x:100, y:100, w:200, h:50, 
+            color: document.getElementById('colorPicker').value, 
+            fontSize: document.getElementById('sizePicker').value 
+        });
+        updateThumbnail();
+    }
 
-    document.getElementById("imgUpload").addEventListener("change", function(e) {
-        const file = e.target.files[0]; if(!file) return;
+    function saveToStorage() {
+        saveCurrent();
+        localStorage.setItem('poster_final_v2', JSON.stringify(pages));
+        alert("Đã lưu thiết kế!");
+    }
+
+    function selectElement(el) {
+        deselectAll();
+        selectedEl = el;
+        el.classList.add('selected');
+    }
+
+    function deselectAll(e) {
+        if(e && e.target !== canvas && !e.target.classList.contains('editor-area')) return;
+        document.querySelectorAll('.item').forEach(el => el.classList.remove('selected'));
+        selectedEl = null;
+    }
+    
+    
+    
+
+    // Tìm đoạn này và thay thế bằng code mới bên dưới
+document.getElementById("imgUpload").addEventListener("change", function(e) {
+    const files = e.target.files; // Lấy danh sách các file (số nhiều)
+    if (!files.length) return;
+
+    // Lặp qua từng file trong danh sách
+    Array.from(files).forEach((file, index) => {
         const reader = new FileReader();
-        reader.onload = (ev) => createItem('image', ev.target.result, { x:50, y:50, w:300, h:450 });
+        reader.onload = (ev) => {
+            // Tạo item ảnh cho mỗi file
+            // Thêm một chút độ lệch (offset) để các ảnh không đè khít lên nhau
+            createItem('image', ev.target.result, { 
+                x: 50 + (index * 20), 
+                y: 50 + (index * 20), 
+                w: 300, 
+                h: 450 
+            });
+            
+            // Cập nhật thumbnail sau khi ảnh cuối cùng được tải xong
+            if (index === files.length - 1) {
+                setTimeout(updateThumbnail, 200);
+            }
+        };
         reader.readAsDataURL(file);
     });
+    
+    // Xóa giá trị input để có thể chọn lại cùng các file đó nếu muốn
+    e.target.value = ""; 
+});
+
+
+
+
+
+
+
+
 
     function download() {
-        deselectAll(); canvas.classList.add('exporting');
+        deselectAll();
+        canvas.classList.add('exporting');
         html2canvas(canvas, { scale: 2, useCORS: true }).then(cv => {
             const link = document.createElement('a');
-            link.download = `thiet-ke-trang-${currentPageIndex+1}.png`;
+            link.download = `trang-${currentPageIndex+1}.png`;
             link.href = cv.toDataURL(); link.click();
             canvas.classList.remove('exporting');
         });
     }
 
+    document.getElementById('colorPicker').addEventListener('input', (e) => {
+        if (selectedEl && selectedEl.querySelector('.text-content')) {
+            selectedEl.querySelector('.text-content').style.color = e.target.value;
+            updateThumbnail();
+        }
+    });
+
+    document.getElementById('sizePicker').addEventListener('input', (e) => {
+        if (selectedEl && selectedEl.querySelector('.text-content')) {
+            selectedEl.querySelector('.text-content').style.fontSize = e.target.value + 'px';
+            updateThumbnail();
+        }
+    });
+
     window.addEventListener('keydown', (e) => {
         if((e.key === "Delete" || e.key === "Backspace") && selectedEl && document.activeElement.contentEditable !== "true") {
-            selectedEl.remove(); selectedEl = null;
+            selectedEl.remove(); selectedEl = null; updateThumbnail();
         }
     });
 </script>
