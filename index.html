@@ -2,48 +2,62 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Poster Editor Pro - Lớp Phủ Thông Minh</title>
+    <title>Poster Editor Pro - Multi Page</title>
     <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <style>
-        :root { --primary: #3b82f6; --bg: #0f172a; }
-        body { margin: 0; font-family: sans-serif; background: var(--bg); color: white; display: flex; flex-direction: column; align-items: center; }
+        :root { --primary: #3b82f6; --bg: #0f172a; --sidebar-w: 200px; }
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: white; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
-        .toolbar { width: 100%; padding: 10px; background: #1e293b; display: flex; justify-content: center; gap: 10px; align-items: center; z-index: 9999; flex-wrap: wrap; border-bottom: 1px solid #334155; }
-        .btn { padding: 6px 14px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; }
+        /* Toolbar */
+        .toolbar { height: 60px; background: #1e293b; display: flex; align-items: center; gap: 15px; padding: 0 20px; border-bottom: 1px solid #334155; z-index: 100; }
+        .btn { padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; transition: 0.2s; }
         .btn-add { background: #3b82f6; color: white; }
         .btn-save { background: #f59e0b; color: white; }
         .btn-export { background: #16a34a; color: white; }
         .btn-clear { background: #ef4444; color: white; }
+        .btn:hover { opacity: 0.8; }
 
-        #canvas-container { padding: 30px; display: flex; justify-content: center; width: 100%; }
+        /* Main Layout */
+        .main-container { display: flex; flex: 1; overflow: hidden; }
+
+        /* Sidebar - Slides */
+        .sidebar { width: var(--sidebar-w); background: #1e293b; border-right: 1px solid #334155; display: flex; flex-direction: column; padding: 10px; gap: 10px; overflow-y: auto; }
+        .slide-thumb { width: 100%; aspect-ratio: 5/7; background: #475569; border: 2px solid transparent; border-radius: 4px; cursor: pointer; position: relative; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #cbd5e1; flex-shrink: 0; }
+        .slide-thumb.active { border-color: var(--primary); background: #334155; }
+        .slide-thumb:hover { background: #334155; }
+        .delete-slide { position: absolute; top: 2px; right: 2px; background: rgba(239, 68, 68, 0.8); color: white; border: none; border-radius: 3px; font-size: 10px; cursor: pointer; display: none; }
+        .slide-thumb:hover .delete-slide { display: block; }
+
+        /* Canvas Area */
+        .editor-area { flex: 1; display: flex; justify-content: center; align-items: flex-start; padding: 40px; overflow: auto; background: #020617; }
         #canvas { 
-            width: 500px; height: 700px; background: #fdf6e3; position: relative; 
-            border: 1px solid #333; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            width: 500px; height: 700px; background: white; position: relative; 
+            box-shadow: 0 0 50px rgba(0,0,0,0.5); flex-shrink: 0;
         }
 
-        .item { 
-            position: absolute; min-width: 30px; min-height: 30px; 
-            padding: 0; box-sizing: border-box; touch-action: none; 
-            transform-origin: center; cursor: move;
-            z-index: 1; /* Mặc định */
-        }
+        /* Items & Handles */
+        .item { position: absolute; box-sizing: border-box; touch-action: none; cursor: move; min-width: 20px; min-height: 20px; }
+        .item.selected { outline: 2px solid var(--primary); }
 
-        .item.selected { outline: 1.5px solid var(--primary); }
-
-        /* Nút xoay và 8 nút kéo */
-        .rotate-handle { display: none; position: absolute; top: -35px; left: 50%; transform: translateX(-50%); width: 12px; height: 12px; background: white; border: 2px solid var(--primary); border-radius: 50%; cursor: grab; }
+        .rotate-handle { display: none; position: absolute; top: -30px; left: 50%; transform: translateX(-50%); width: 14px; height: 14px; background: white; border: 2px solid var(--primary); border-radius: 50%; cursor: crosshair; }
         .item.selected .rotate-handle { display: block; }
-        .item.selected .rotate-handle::after { content: ''; position: absolute; top: 12px; left: 5px; width: 2px; height: 23px; background: var(--primary); }
 
-        .resize-handle { display: none; position: absolute; width: 8px; height: 8px; background: white; border: 1.5px solid var(--primary); }
+        /* 8 Nút kéo sát mép */
+        .resize-handle { display: none; position: absolute; width: 10px; height: 10px; background: white; border: 1.5px solid var(--primary); z-index: 10; }
         .item.selected .resize-handle { display: block; }
-        .nw { top: -5px; left: -5px; cursor: nw-resize; } .ne { top: -5px; right: -5px; cursor: ne-resize; }
-        .sw { bottom: -5px; left: -5px; cursor: sw-resize; } .se { bottom: -5px; right: -5px; cursor: se-resize; }
-        .n { top: -5px; left: calc(50% - 4px); cursor: n-resize; } .s { bottom: -5px; left: calc(50% - 4px); cursor: s-resize; }
-        .w { left: -5px; top: calc(50% - 4px); cursor: w-resize; } .e { right: -5px; top: calc(50% - 4px); cursor: e-resize; }
+        
+        /* Căn chỉnh vị trí handle */
+        .nw { top: -5px; left: -5px; cursor: nw-resize; }
+        .ne { top: -5px; right: -5px; cursor: ne-resize; }
+        .sw { bottom: -5px; left: -5px; cursor: sw-resize; }
+        .se { bottom: -5px; right: -5px; cursor: se-resize; }
+        .n { top: -5px; left: calc(50% - 5px); cursor: n-resize; }
+        .s { bottom: -5px; left: calc(50% - 5px); cursor: s-resize; }
+        .w { left: -5px; top: calc(50% - 5px); cursor: w-resize; }
+        .e { right: -5px; top: calc(50% - 5px); cursor: e-resize; }
 
-        .text-content { outline: none; width: 100%; height: 100%; text-align: center; color: #1e3a8a; padding: 5px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; }
+        .text-content { outline: none; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; text-align: center; word-break: break-word; overflow: hidden; }
         .exporting .rotate-handle, .exporting .resize-handle { display: none !important; }
         .exporting .selected { outline: none !important; }
     </style>
@@ -51,222 +65,261 @@
 <body>
 
 <div class="toolbar">
-    <button class="btn btn-add" onclick="createNewText()">➕ Thêm Chữ</button>
-    <div style="background: #334155; padding: 4px 10px; border-radius: 4px; display: flex; gap: 8px; align-items: center;">
-        <label style="font-size: 11px;">Ảnh:</label>
-        <input type="file" id="imgUpload" style="font-size: 11px; width: 140px;">
-    </div>
+    <button class="btn btn-add" onclick="createNewText()">➕ Chữ</button>
+    <input type="file" id="imgUpload" style="display:none">
+    <button class="btn btn-add" onclick="document.getElementById('imgUpload').click()">🖼️ Ảnh</button>
     <input type="color" id="colorPicker" value="#1e3a8a">
-    <input type="number" id="sizePicker" value="24" style="width: 45px;">
-    <button class="btn btn-save" onclick="saveData()">💾 Lưu Lại</button>
-    <button class="btn btn-export" onclick="download()">🖼️ Xuất Ảnh</button>
-    <button class="btn btn-clear" onclick="clearAll()">🗑️ Xóa Hết</button>
+    <input type="number" id="sizePicker" value="24" style="width: 50px;">
+    <button class="btn btn-save" onclick="saveToStorage()">💾 Lưu</button>
+    <button class="btn btn-export" onclick="download()">🖼️ Xuất</button>
+    <button class="btn btn-clear" onclick="clearCurrentSlide()">🗑️ Xóa Trang</button>
 </div>
 
-<div id="canvas-container">
-    <div id="canvas" onclick="deselectAll(event)"></div>
+<div class="main-container">
+    <div class="sidebar" id="sidebar">
+        <button class="btn btn-add" onclick="addNewSlide()" style="margin-bottom: 10px;">+ Trang Mới</button>
+        <div id="slides-list"></div>
+    </div>
+    
+    <div class="editor-area">
+        <div id="canvas" onclick="deselectAll(event)"></div>
+    </div>
 </div>
 
 <script>
+    let pages = [{ id: Date.now(), items: [] }];
+    let currentPageIndex = 0;
     let selectedEl = null;
-    let maxZIndex = 10; // Biến theo dõi lớp cao nhất
+    let maxZIndex = 100;
     const canvas = document.getElementById('canvas');
 
     window.onload = () => {
-        loadData();
-        setInterval(saveData, 5000);
+        const saved = localStorage.getItem('poster_multi_v1');
+        if (saved) {
+            pages = JSON.parse(saved);
+        }
+        renderSidebar();
+        loadSlide(0);
     };
 
-    // Hàm lấy Z-Index cao nhất hiện tại để đè lên
-    function getNextZIndex() {
-        maxZIndex++;
-        return maxZIndex;
+    // --- QUẢN LÝ TRANG (SLIDES) ---
+    function renderSidebar() {
+        const list = document.getElementById('slides-list');
+        list.innerHTML = '';
+        pages.forEach((page, index) => {
+            const div = document.createElement('div');
+            div.className = `slide-thumb ${index === currentPageIndex ? 'active' : ''}`;
+            div.innerHTML = `Trang ${index + 1} <button class="delete-slide" onclick="deleteSlide(event, ${index})">✕</button>`;
+            div.onclick = () => loadSlide(index);
+            list.appendChild(div);
+        });
     }
 
-    function createNewText(content = "Nhập nội dung...", x = 100, y = 100, angle = 0, w = 250, h = 60, color = null, size = null, z = null) {
+    function addNewSlide() {
+        pages.push({ id: Date.now(), items: [] });
+        currentPageIndex = pages.length - 1;
+        renderSidebar();
+        loadSlide(currentPageIndex);
+    }
+
+    function deleteSlide(e, index) {
+        e.stopPropagation();
+        if (pages.length === 1) return;
+        pages.splice(index, 1);
+        currentPageIndex = Math.max(0, currentPageIndex - 1);
+        renderSidebar();
+        loadSlide(currentPageIndex);
+    }
+
+    function loadSlide(index) {
+        saveCurrentItemsToMemory(); // Lưu trang hiện tại trước khi chuyển
+        currentPageIndex = index;
+        canvas.innerHTML = '';
+        const page = pages[index];
+        page.items.forEach(item => {
+            if (item.type === 'text') {
+                createItem('text', item.content, item);
+            } else {
+                createItem('image', item.content, item);
+            }
+        });
+        renderSidebar();
+    }
+
+    // --- QUẢN LÝ PHẦN TỬ ---
+    function createNewText() {
+        const data = { x: 50, y: 50, w: 200, h: 50, angle: 0, color: document.getElementById('colorPicker').value, fontSize: document.getElementById('sizePicker').value, z: ++maxZIndex };
+        createItem('text', "Nhấn để sửa chữ", data);
+    }
+
+    function createItem(type, content, data) {
         const div = document.createElement('div');
         div.className = 'item';
-        div.innerHTML = `
+        div.style.width = data.w + 'px';
+        div.style.height = data.h + 'px';
+        div.style.zIndex = data.z || ++maxZIndex;
+        
+        let innerHTML = `
             <div class="rotate-handle"></div>
             <div class="resize-handle nw"></div><div class="resize-handle ne"></div>
             <div class="resize-handle sw"></div><div class="resize-handle se"></div>
             <div class="resize-handle n"></div><div class="resize-handle s"></div>
             <div class="resize-handle w"></div><div class="resize-handle e"></div>
-            <div class="text-content" contenteditable="true">${content}</div>
         `;
-        
-        const txt = div.querySelector('.text-content');
-        txt.style.color = color || document.getElementById('colorPicker').value;
-        txt.style.fontSize = (size || document.getElementById('sizePicker').value) + 'px';
-        
-        div.style.width = w + 'px';
-        div.style.height = h + 'px';
-        div.style.zIndex = z || getNextZIndex(); // Gán lớp mới cao hơn lớp cũ
-        
-        addTOStage(div, x, y, angle);
-    }
 
-    function addTOStage(el, x, y, angle) {
-        canvas.appendChild(el);
-        el.setAttribute('data-x', x);
-        el.setAttribute('data-y', y);
-        el.setAttribute('data-angle', angle);
-        el.style.transform = `translate(${x}px, ${y}px) rotate(${angle}deg)`;
+        if (type === 'text') {
+            innerHTML += `<div class="text-content" contenteditable="true" style="color:${data.color}; font-size:${data.fontSize}px">${content}</div>`;
+        } else {
+            innerHTML += `<img src="${content}" style="width:100%; height:100%; pointer-events:none; object-fit:contain;">`;
+        }
+
+        div.innerHTML = innerHTML;
+        canvas.appendChild(div);
         
-        makeTransformable(el);
-        el.addEventListener('mousedown', (e) => { 
-            e.stopPropagation(); 
-            el.style.zIndex = getNextZIndex(); // Click vào là nhảy lên trước
-            selectElement(el); 
+        setTransform(div, data.x, data.y, data.angle);
+        makeInteractable(div);
+
+        div.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+            selectElement(div);
         });
     }
 
-    function makeTransformable(el) {
+    function setTransform(el, x, y, angle) {
+        el.style.transform = `translate(${x}px, ${y}px) rotate(${angle}deg)`;
+        el.setAttribute('data-x', x);
+        el.setAttribute('data-y', y);
+        el.setAttribute('data-angle', angle);
+    }
+
+    function makeInteractable(el) {
         interact(el)
             .draggable({
                 listeners: {
                     move(event) {
                         let x = (parseFloat(el.getAttribute('data-x')) || 0) + event.dx;
                         let y = (parseFloat(el.getAttribute('data-y')) || 0) + event.dy;
-                        let angle = parseFloat(el.getAttribute('data-angle')) || 0;
-                        el.style.transform = `translate(${x}px, ${y}px) rotate(${angle}deg)`;
-                        el.setAttribute('data-x', x);
-                        el.setAttribute('data-y', y);
+                        let angle = el.getAttribute('data-angle') || 0;
+                        setTransform(el, x, y, angle);
                     }
                 }
             })
             .resizable({
+                // SỬA LỖI: Định nghĩa rõ ràng các cạnh để interact.js xử lý đúng hướng
                 edges: { left: '.w, .nw, .sw', right: '.e, .ne, .se', bottom: '.s, .sw, .se', top: '.n, .nw, .ne' },
                 listeners: {
                     move(event) {
                         let x = parseFloat(el.getAttribute('data-x')) || 0;
                         let y = parseFloat(el.getAttribute('data-y')) || 0;
-                        let angle = parseFloat(el.getAttribute('data-angle')) || 0;
+                        let angle = el.getAttribute('data-angle') || 0;
+
+                        // Cập nhật kích thước
                         el.style.width = event.rect.width + 'px';
                         el.style.height = event.rect.height + 'px';
-                        x += event.deltaRect.left; y += event.deltaRect.top;
-                        el.style.transform = `translate(${x}px, ${y}px) rotate(${angle}deg)`;
-                        el.setAttribute('data-x', x); el.setAttribute('data-y', y);
+
+                        // Cập nhật vị trí khi kéo các cạnh Top hoặc Left
+                        x += event.deltaRect.left;
+                        y += event.deltaRect.top;
+
+                        setTransform(el, x, y, angle);
                     }
-                }
+                },
+                modifiers: [
+                    interact.modifiers.restrictSize({ min: { width: 20, height: 20 } })
+                ]
             });
 
+        // Xoay
         interact(el.querySelector('.rotate-handle')).draggable({
-            onmove: (event) => {
-                const box = el.getBoundingClientRect();
-                const centerX = box.left + box.width / 2;
-                const centerY = box.top + box.height / 2;
-                const curAngle = Math.atan2(event.clientY - centerY, event.clientX - centerX);
-                let angle = curAngle * (180 / Math.PI) + 90;
-                let x = parseFloat(el.getAttribute('data-x')) || 0;
-                let y = parseFloat(el.getAttribute('data-y')) || 0;
-                el.style.transform = `translate(${x}px, ${y}px) rotate(${angle}deg)`;
-                el.setAttribute('data-angle', angle);
+            onmove: (e) => {
+                const rect = el.getBoundingClientRect();
+                const cx = rect.left + rect.width / 2;
+                const cy = rect.top + rect.height / 2;
+                const angle = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI + 90;
+                setTransform(el, el.getAttribute('data-x'), el.getAttribute('data-y'), angle);
             }
         });
     }
 
-    function saveData() {
+    // --- HỆ THỐNG DỮ LIỆU ---
+    function saveCurrentItemsToMemory() {
         const items = [];
         document.querySelectorAll('.item').forEach(el => {
             const isImg = el.querySelector('img');
             items.push({
                 type: isImg ? 'image' : 'text',
                 content: isImg ? isImg.src : el.querySelector('.text-content').innerHTML,
-                x: parseFloat(el.getAttribute('data-x')) || 0,
-                y: parseFloat(el.getAttribute('data-y')) || 0,
-                angle: parseFloat(el.getAttribute('data-angle')) || 0,
-                width: el.offsetWidth,
-                height: el.offsetHeight,
-                zIndex: el.style.zIndex, // Lưu lại thứ tự lớp
+                x: parseFloat(el.getAttribute('data-x')),
+                y: parseFloat(el.getAttribute('data-y')),
+                w: el.offsetWidth,
+                h: el.offsetHeight,
+                angle: parseFloat(el.getAttribute('data-angle')),
+                z: el.style.zIndex,
                 color: isImg ? null : el.querySelector('.text-content').style.color,
-                fontSize: isImg ? null : el.querySelector('.text-content').style.fontSize
+                fontSize: isImg ? null : parseInt(el.querySelector('.text-content').style.fontSize)
             });
         });
-        localStorage.setItem('poster_v3_data', JSON.stringify(items));
+        pages[currentPageIndex].items = items;
     }
 
-    function loadData() {
-        const data = localStorage.getItem('poster_v3_data');
-        if (!data) return;
-        const items = JSON.parse(data);
-        items.forEach(item => {
-            if (item.type === 'text') {
-                createNewText(item.content, item.x, item.y, item.angle, item.width, item.height, item.color, parseInt(item.fontSize), item.zIndex);
-            } else {
-                createImageElement(item.content, item.x, item.y, item.angle, item.width, item.height, item.zIndex);
-            }
-            // Cập nhật lại maxZIndex để không bị trùng
-            if(parseInt(item.zIndex) > maxZIndex) maxZIndex = parseInt(item.zIndex);
-        });
+    function saveToStorage() {
+        saveCurrentItemsToMemory();
+        localStorage.setItem('poster_multi_v1', JSON.stringify(pages));
+        alert("Đã lưu tất cả các trang!");
     }
 
-    function clearAll() {
-        if(confirm("Xóa hết thiết kế?")) {
-            canvas.innerHTML = "";
-            localStorage.removeItem('poster_v3_data');
-            maxZIndex = 10;
-        }
-    }
-
+    // --- TIỆN ÍCH ---
     function selectElement(el) {
         deselectAll();
         selectedEl = el;
         el.classList.add('selected');
+        el.style.zIndex = ++maxZIndex;
     }
 
     function deselectAll(e) {
-        if (e && e.target !== canvas) return;
+        if (e && e.target !== canvas && !e.target.classList.contains('editor-area')) return;
         document.querySelectorAll('.item').forEach(el => el.classList.remove('selected'));
         selectedEl = null;
+    }
+
+    function clearCurrentSlide() {
+        if (confirm("Xóa sạch trang này?")) {
+            canvas.innerHTML = '';
+            saveCurrentItemsToMemory();
+        }
     }
 
     document.getElementById("imgUpload").addEventListener("change", function(e) {
         const file = e.target.files[0];
         if(!file) return;
         const reader = new FileReader();
-        reader.onload = (ev) => createImageElement(ev.target.result);
+        reader.onload = (ev) => {
+            createItem('image', ev.target.result, { x: 50, y: 50, w: 200, h: 200, angle: 0, z: ++maxZIndex });
+        };
         reader.readAsDataURL(file);
-    });
-
-    function createImageElement(src, x=100, y=100, angle=0, w=200, h=150, z=null) {
-        const div = document.createElement('div');
-        div.className = 'item';
-        div.innerHTML = `
-            <div class="rotate-handle"></div>
-            <div class="resize-handle nw"></div><div class="resize-handle ne"></div>
-            <div class="resize-handle sw"></div><div class="resize-handle se"></div>
-            <div class="resize-handle n"></div><div class="resize-handle s"></div>
-            <div class="resize-handle w"></div><div class="resize-handle e"></div>
-            <img src="${src}" style="width:100%; height:100%; pointer-events:none; display:block; object-fit:contain;">
-        `;
-        div.style.width = w + 'px';
-        div.style.height = h + 'px';
-        div.style.zIndex = z || getNextZIndex(); // Ảnh mới luôn có Z-Index cao hơn
-        addTOStage(div, x, y, angle);
-    }
-
-    window.addEventListener('keydown', (e) => {
-        if ((e.key === "Delete" || e.key === "Backspace") && selectedEl) {
-            if (document.activeElement.contentEditable !== "true") {
-                selectedEl.remove();
-                selectedEl = null;
-                saveData();
-            }
-        }
     });
 
     function download() {
         deselectAll();
         canvas.classList.add('exporting');
-        html2canvas(canvas, { scale: 3, useCORS: true }).then(cv => {
+        html2canvas(canvas, { scale: 2 }).then(cv => {
             const link = document.createElement('a');
-            link.download = 'thiet-ke.png';
+            link.download = `trang-${currentPageIndex + 1}.png`;
             link.href = cv.toDataURL();
             link.click();
             canvas.classList.remove('exporting');
         });
     }
+
+    // Delete phím tắt
+    window.addEventListener('keydown', (e) => {
+        if ((e.key === "Delete" || e.key === "Backspace") && selectedEl) {
+            if (document.activeElement.contentEditable !== "true") {
+                selectedEl.remove();
+                selectedEl = null;
+            }
+        }
+    });
 </script>
 </body>
 </html>
