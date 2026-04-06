@@ -1,197 +1,296 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <title>Poster Editor Pro v16 - Fixed Selection</title>
-    <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <style>
-        :root { --primary: #3b82f6; --bg: #0f172a; --sidebar-w: 220px; }
-        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: white; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        
-        .toolbar { height: 80px; background: #1e293b; display: flex; align-items: center; gap: 12px; padding: 0 15px; border-bottom: 1px solid #334155; z-index: 1000; overflow-x: auto; }
-        .btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; color: white; transition: 0.2s; display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
-        .btn-blue { background: #3b82f6; }
-        .btn-purple { background: #8b5cf6; }
-        .btn-orange { background: #f59e0b; }
-        .btn-green { background: #16a34a; }
+<meta charset="UTF-8">
+<title>Matrix 3x3 A/B Random System</title>
 
-        .text-controls { display: flex; align-items: center; gap: 10px; background: #334155; padding: 8px 12px; border-radius: 8px; font-size: 11px; flex-shrink: 0; }
-        .control-group { display: flex; flex-direction: column; gap: 4px; align-items: center; }
-        
-        .text-controls input[type="number"] { 
-            width: 55px; background: #1e293b; color: #60a5fa; border: 1px solid #475569; 
-            border-radius: 4px; padding: 3px; text-align: center; font-weight: bold; outline: none;
-        }
-        .text-controls span { color: #94a3b8; font-size: 10px; text-transform: uppercase; }
+<style>
+    body {
+        font-family: 'Segoe UI', sans-serif;
+        /* Nền tối sâu cho toàn bộ trang */
+        background: linear-gradient(135deg, #050509, #1a1625, #0a0a0f);
+        color: white;
+        text-align: center;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        min-height: 100vh; /* Căn giữa theo chiều dọc trang */
+        margin: 20px;
+        padding: 20px;
+    }
 
-        .main-container { display: flex; flex: 1; overflow: hidden; }
-        .sidebar { width: var(--sidebar-w); background: #1e293b; border-right: 1px solid #334155; display: flex; flex-direction: column; padding: 15px; gap: 15px; overflow-y: auto; }
-        #slides-list { display: flex; flex-direction: column; gap: 15px; }
-        .slide-thumb { width: 100%; aspect-ratio: 5/7; background: #eee; border: 3px solid #475569; border-radius: 8px; cursor: pointer; position: relative; overflow: hidden; transition: 0.3s; flex-shrink: 0; }
-        .slide-thumb.active { border-color: var(--primary); box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
-        .thumb-preview { width: 100%; height: 100%; object-fit: contain; }
+    /* Chiếc hộp chứa toàn bộ nội dung */
+    .main-container {
+        background: rgba(20, 20, 30, 0.6); /* Nền hộp hơi tối */
+        padding: 50px 60px;
+        border-radius: 30px;
+        border: 1px solid rgba(255, 255, 255, 0.05); /* Viền mờ */
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5); /* Đổ bóng cho hộp */
+        backdrop-filter: blur(10px); /* Hiệu ứng làm mờ nền phía sau hộp */
+    }
 
-        .editor-area { flex: 1; display: flex; justify-content: center; align-items: flex-start; padding: 40px; overflow: auto; background: #020617; }
-        #canvas { width: 500px; height: 700px; background: white; position: relative; box-shadow: 0 0 40px rgba(0,0,0,0.8); flex-shrink: 0; }
+    h2 { 
+        margin-top: 0;
+        margin-bottom: 25px; 
+        text-transform: uppercase; 
+        letter-spacing: 3px; 
+        color: rgba(255, 255, 255, 0.9);
+    }
 
-        .item { position: absolute; box-sizing: border-box; touch-action: none; }
-        .item.selected { outline: 2px solid var(--primary); }
-        
-        .resize-handle { display: none; position: absolute; width: 10px; height: 10px; background: white; border: 1px solid var(--primary); z-index: 100; }
-        .item.selected .resize-handle, .item.selected .rotate-handle { display: block; }
-        
-        .nw { top: -5px; left: -5px; cursor: nw-resize; } .n { top: -5px; left: 50%; transform: translateX(-50%); cursor: n-resize; }
-        .ne { top: -5px; right: -5px; cursor: ne-resize; } .w { left: -5px; top: 50%; transform: translateY(-50%); cursor: w-resize; }
-        .e { right: -5px; top: 50%; transform: translateY(-50%); cursor: e-resize; } .sw { bottom: -5px; left: -5px; cursor: sw-resize; }
-        .s { bottom: -5px; left: 50%; transform: translateX(-50%); cursor: s-resize; } .se { bottom: -5px; right: -5px; cursor: se-resize; }
+    /* Đồng hồ đếm ngược */
+    #timer-display {
+        font-size: 60px;
+        font-weight: bold;
+        color: #00f2fe;
+        margin-bottom: 15px;
+        text-shadow: 0 0 20px rgba(0, 242, 254, 0.8);
+    }
 
-        .rotate-handle { display: none; position: absolute; top: -30px; left: 50%; transform: translateX(-50%); width: 16px; height: 16px; background: #fbbf24; border: 1px solid #000; border-radius: 50%; cursor: grab; z-index: 101; }
+    /* Nút Random chính */
+    .btn-random {
+        padding: 18px 60px;
+        font-size: 22px;
+        font-weight: bold;
+        color: yellow;
+        background: linear-gradient(45deg, #ff0000, #4facfe);
+        border: none;
+        border-radius: 50px;
+        cursor: pointer;
+        box-shadow: 0 0 25px rgba(127, 0, 255, 0.5);
+        transition: 0.3s;
+        margin-bottom: 50px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
 
-        .text-content { outline: none; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; text-align: center; color: black; font-size: 24px; word-break: break-word; white-space: pre-wrap; line-height: 1.2; }
-        .text-content div, .text-content p { margin: 0; padding: 0; transition: margin 0.1s; min-height: 1em; }
-        .exporting .resize-handle, .exporting .rotate-handle, .exporting .selected { display: none !important; }
-    </style>
+    .btn-random:hover {
+        transform: scale(1.05);
+        box-shadow: 0 0 35px #00f2fe;
+    }
+
+    .btn-random:active { transform: scale(0.95); }
+
+    /* Lưới ma trận 3x3 */
+    .matrix {
+        display: grid;
+        grid-template-columns: repeat(3, 110px); 
+        grid-template-rows: repeat(3, 110px);    
+        gap: 25px;
+        justify-content: center;
+    }
+
+    .cell {
+        height: 110px;
+        width: 110px;
+        border-radius: 20px;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 50px;
+        font-weight: bold;
+        /* Nền phím tối hơn để nổi bật chữ */
+        background: rgba(0, 0, 0, 0.3); 
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(5px);
+        transition: 0.3s;
+    }
+
+    /* Số nhỏ cố định phía trên (1-9) */
+    .cell-number {
+        position: absolute;
+        top: 10px;
+        left: 14px;
+        font-size: 32px;
+        color: rgba(255, 255, 0, 0.8); /* Màu vàng mờ */
+        font-weight: normal;
+    }
+
+    /* Nội dung A hoặc b */
+    .cell-content {
+        /* Màu mặc định là trắng mờ */
+        color: rgba(255, 255, 255, 0.3);
+        text-shadow: none;
+        transition: 0.3s ease;
+    }
+
+    /* Hiệu ứng khi đang chạy random */
+    .spinning {
+        border-color: #00f2fe;
+        box-shadow: 0 0 25px rgba(0, 242, 254, 0.6);
+        animation: pulse 0.1s infinite;
+    }
+
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.03); }
+        100% { transform: scale(1); }
+    }
+</style>
 </head>
-<body onmousedown="checkDeselect(event)">
 
-<div class="toolbar" id="mainToolbar">
-    <button class="btn btn-blue" onclick="createNewText()">➕ Chữ</button>
-    <button class="btn btn-blue" onclick="document.getElementById('imgUpload').click()">🖼️ Ảnh</button>
-    <input type="file" id="imgUpload" style="display:none" multiple accept="image/*">
-    <button class="btn btn-purple" onclick="bringToFront()">🔝 Lên Trên</button>
-    
-    <div class="text-controls">
-        <div class="control-group"><span>Size (px)</span><input type="number" id="fontSizeInput" value="24" oninput="updateSelectionStyle('fontSize', this.value + 'px')"></div>
-        <div class="control-group"><span>Dãn dòng</span><input type="number" id="lineHeightInput" value="1.2" step="0.1" oninput="updateSpacing()"></div>
-        <div class="control-group"><span>Căn trên</span><input type="number" id="marginTopInput" value="0" oninput="updateLineMargin('marginTop', this.value + 'px')"></div>
-        <div class="control-group"><span>Căn dưới</span><input type="number" id="marginBottomInput" value="0" oninput="updateLineMargin('marginBottom', this.value + 'px')"></div>
-    </div>
-    <input type="color" id="colorPicker" title="Màu chữ">
-    <button class="btn btn-orange" onclick="saveData(true)">💾 LƯU</button>
-    <button class="btn btn-green" onclick="download()">🖼️ XUẤT</button>
-</div>
+<body>
 
-<div class="main-container">
-    <div class="sidebar" id="sidebar">
-        <button class="btn btn-blue" onclick="addNewSlide()" style="width:100%; margin-bottom:10px;">+ Trang Mới</button>
-        <div id="slides-list"></div>
+    <div class="main-container">
+        <h2>Hệ Thống Random</h2>
+
+        <div id="timer-display">05:00</div>
+
+        <button class="btn-random" id="mainButton" onclick="handleButtonClick()">BẮT ĐẦU</button>
+
+        <div class="matrix" id="matrix">
+            </div>
     </div>
-    <div class="editor-area">
-        <div id="canvas"></div>
-    </div>
-</div>
+
+    <audio id="spinSound" preload="auto">
+        <source src="https://www.soundjay.com/misc/sounds/button-37.mp3" type="audio/mpeg">
+    </audio>
 
 <script>
-    let pages = [{ id: Date.now(), items: [], thumbnail: "" }], currentPageIndex = 0, selectedEl = null, maxZIndex = 1000, lastRange = null;
-    const canvas = document.getElementById('canvas'), dbName = "PosterDB_v15_Final", storeName = "projects";
+    const matrixContainer = document.getElementById("matrix");
+    const spinSound = document.getElementById("spinSound");
+    const timerDisplay = document.getElementById("timer-display");
+    const mainButton = document.getElementById("mainButton");
+    const cellDisplays = [];
 
-    // Lưu vùng bôi đen và ngăn chặn việc mất focus khi click vào Toolbar
-    document.addEventListener('selectionchange', () => {
-        const sel = window.getSelection();
-        if (sel.rangeCount > 0 && canvas.contains(sel.getRangeAt(0).commonAncestorContainer)) {
-            lastRange = sel.getRangeAt(0).cloneRange();
-        }
-    });
+    let timeLeft = 300; // 300 giây
+    let timerInterval = null;
+    let isStarted = false;
 
-    function checkDeselect(e) {
-        // Nếu click vào canvas (vùng trống) thì mới bỏ chọn. Click vào toolbar hoặc item thì giữ nguyên.
-        if (e.target === canvas || e.target.classList.contains('editor-area')) {
-            deselectAll();
-        }
-    }
-
-    function deselectAll() {
-        document.querySelectorAll('.item').forEach(el => el.classList.remove('selected'));
-        selectedEl = null;
-    }
-
-    function selectElement(el) {
-        deselectAll();
-        selectedEl = el;
-        el.classList.add('selected');
-        const text = el.querySelector('.text-content');
-        if (text) {
-            document.getElementById('fontSizeInput').value = parseInt(window.getComputedStyle(text).fontSize) || 24;
-            document.getElementById('lineHeightInput').value = text.style.lineHeight || 1.2;
-        }
-    }
-
-    function updateSelectionStyle(prop, val) {
-        if (lastRange && !lastRange.collapsed) {
-            const sel = window.getSelection();
-            sel.removeAllRanges();
-            sel.addRange(lastRange);
-            const span = document.createElement('span');
-            span.style[prop] = val;
-            try {
-                const fragment = lastRange.extractContents();
-                span.appendChild(fragment);
-                lastRange.insertNode(span);
-            } catch (e) {}
-            saveData();
-        } else if (selectedEl) {
-            const text = selectedEl.querySelector('.text-content');
-            if (text) { text.style[prop] = val; saveData(); }
-        }
-    }
-
-    function updateLineMargin(prop, val) {
-        let node = lastRange ? lastRange.startContainer : window.getSelection().anchorNode;
-        if (node) {
-            if (node.nodeType === 3) node = node.parentNode;
-            const lineEl = node.closest('.text-content > div, .text-content > p') || (node.parentElement && node.parentElement.classList.contains('text-content') ? node : null);
-            if (lineEl) { lineEl.style[prop] = val; saveData(); }
-        }
-    }
-
-    function updateSpacing() {
-        if(selectedEl && selectedEl.querySelector('.text-content')) {
-            selectedEl.querySelector('.text-content').style.lineHeight = document.getElementById('lineHeightInput').value;
-            saveData();
-        }
-    }
-
-    // Các hàm hệ thống (Giữ nguyên từ bản của bạn)
-    function initDB() { return new Promise((res) => { const req = indexedDB.open(dbName, 1); req.onupgradeneeded = (e) => e.target.result.createObjectStore(storeName); req.onsuccess = (e) => res(e.target.result); }); }
-    function bringToFront() { if (selectedEl) { maxZIndex++; selectedEl.style.zIndex = maxZIndex; saveData(); } }
-    async function saveData(showAlert = false) {
-        const items = [];
-        document.querySelectorAll('.item').forEach(el => {
-            const img = el.querySelector('img'), text = el.querySelector('.text-content');
-            items.push({ type: img ? 'image' : 'text', content: img ? img.src : text.innerHTML, x: parseFloat(el.getAttribute('data-x')) || 0, y: parseFloat(el.getAttribute('data-y')) || 0, w: el.offsetWidth, h: el.offsetHeight, angle: parseFloat(el.getAttribute('data-angle')) || 0, z: el.style.zIndex, color: img ? null : text.style.color, fontSize: img ? null : text.style.fontSize, lineHeight: img ? null : text.style.lineHeight });
+    // Tạo ma trận 3x3 (9 ô, đánh số từ 1-9)
+    for (let i = 1; i <= 9; i++) {
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        
+        const numLabel = document.createElement("span");
+        numLabel.className = "cell-number";
+        numLabel.textContent = i;
+        
+        const content = document.createElement("span");
+        content.className = "cell-content";
+        content.textContent = "?"; 
+        
+        cell.appendChild(numLabel);
+        cell.appendChild(content);
+        matrixContainer.appendChild(cell);
+        
+        cellDisplays.push({
+            container: cell,
+            text: content
         });
-        if(pages[currentPageIndex]) pages[currentPageIndex].items = items;
-        const temp = selectedEl; if(temp) temp.classList.remove('selected');
-        canvas.classList.add('exporting');
-        const cv = await html2canvas(canvas, { scale: 0.2, useCORS: true, backgroundColor: "#ffffff" });
-        if(pages[currentPageIndex]) pages[currentPageIndex].thumbnail = cv.toDataURL('image/jpeg', 0.6);
-        canvas.classList.remove('exporting');
-        if(temp) temp.classList.add('selected');
-        const db = await initDB(); const tx = db.transaction(storeName, "readwrite"); tx.objectStore(storeName).put(pages, "current_project");
-        renderSidebar(); if(showAlert) alert("Đã lưu!");
     }
-    window.onload = async () => { const db = await initDB(); const tx = db.transaction(storeName, "readonly"); const req = tx.objectStore(storeName).get("current_project"); req.onsuccess = () => { if (req.result) pages = req.result; loadSlide(0); }; };
-    function loadSlide(i) { currentPageIndex = i; canvas.innerHTML = ''; if(pages[i] && pages[i].items) pages[i].items.forEach(it => createItem(it.type, it.content, it)); renderSidebar(); }
-    function createItem(type, content, data) {
-        const div = document.createElement('div'); div.className = 'item'; div.style.width = data.w + 'px'; div.style.height = data.h + 'px'; div.style.zIndex = data.z || ++maxZIndex;
-        div.innerHTML = `<div class="rotate-handle"></div><div class="resize-handle nw"></div><div class="resize-handle n"></div><div class="resize-handle ne"></div><div class="resize-handle w"></div><div class="resize-handle e"></div><div class="resize-handle sw"></div><div class="resize-handle s"></div><div class="resize-handle se"></div>${type === 'text' ? `<div class="text-content" contenteditable="true" spellcheck="false" style="color:${data.color || '#000000'}; font-size:${data.fontSize || '24px'}; line-height:${data.lineHeight || 1.2}">${content}</div>` : `<img src="${content}" style="width:100%; height:100%; pointer-events:none; object-fit:fill;">`}`;
-        canvas.appendChild(div); setTransform(div, data.x, data.y, data.angle || 0); makeInteractable(div);
-        div.addEventListener('mousedown', (e) => { e.stopPropagation(); selectElement(div); });
+
+    // Hàm xáo trộn mảng để vị trí ngẫu nhiên
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
     }
-    function makeInteractable(el) {
-        interact(el).draggable({ ignoreFrom: '.text-content:focus', onmove: (e) => { let x = (parseFloat(el.getAttribute('data-x')) || 0) + e.dx; let y = (parseFloat(el.getAttribute('data-y')) || 0) + e.dy; setTransform(el, x, y, el.getAttribute('data-angle')); } })
-        .resizable({ edges: { left: '.w, .nw, .sw', right: '.e, .ne, .se', bottom: '.s, .sw, .se', top: '.n, .nw, .ne' }, onmove: (e) => { let x = (parseFloat(el.getAttribute('data-x')) || 0) + e.deltaRect.left; let y = (parseFloat(el.getAttribute('data-y')) || 0) + e.deltaRect.top; el.style.width = e.rect.width + 'px'; el.style.height = e.rect.height + 'px'; setTransform(el, x, y, el.getAttribute('data-angle')); } });
-        interact(el.querySelector('.rotate-handle')).draggable({ onmove: (e) => { const rect = el.getBoundingClientRect(); const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2; const angle = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI + 90; setTransform(el, el.getAttribute('data-x'), el.getAttribute('data-y'), angle); } });
+
+    // Hàm xử lý khi bấm nút lần đầu tiên
+    function handleButtonClick() {
+        if (!isStarted) {
+            isStarted = true;
+            
+            // 1. Chạy Random ngay lập tức lần đầu
+            rollMatrix();
+            
+            // 2. Bắt đầu đếm ngược
+            startCountdown();
+            
+            // 3. Cập nhật giao diện nút bấm
+            mainButton.textContent = "HỆ THỐNG ĐANG CHẠY";
+            mainButton.disabled = true;
+            mainButton.style.opacity = "0.5";
+            mainButton.style.cursor = "default";
+            mainButton.style.transform = "scale(1)";
+        }
     }
-    function setTransform(el, x, y, angle) { el.style.transform = `translate(${x}px, ${y}px) rotate(${angle}deg)`; el.setAttribute('data-x', x); el.setAttribute('data-y', y); el.setAttribute('data-angle', angle); }
-    function createNewText() { createItem('text', "<div>Dòng số một</div><div>Dòng số hai</div>", { x:100, y:100, w:250, h:100 }); saveData(); }
-    function addNewSlide() { saveData(); pages.push({ id: Date.now(), items: [], thumbnail: "" }); loadSlide(pages.length - 1); }
-    function renderSidebar() { const list = document.getElementById('slides-list'); list.innerHTML = ''; pages.forEach((p, i) => { const div = document.createElement('div'); div.className = `slide-thumb ${i === currentPageIndex ? 'active' : ''}`; div.innerHTML = `<img src="${p.thumbnail || ''}" class="thumb-preview">`; div.onclick = () => loadSlide(i); list.appendChild(div); }); }
-    function download() { deselectAll(); html2canvas(canvas, { scale: 2, backgroundColor: "#ffffff" }).then(cv => { const link = document.createElement('a'); link.download = `poster.png`; link.href = cv.toDataURL(); link.click(); }); }
-    document.getElementById("imgUpload").addEventListener("change", function(e) { Array.from(e.target.files).forEach(file => { const reader = new FileReader(); reader.onload = (ev) => { createItem('image', ev.target.result, { x: 50, y: 50, w: 200, h: 200 }); saveData(); }; reader.readAsDataURL(file); }); });
-    document.getElementById('colorPicker').addEventListener('input', (e) => { if(selectedEl && selectedEl.querySelector('.text-content')) { selectedEl.querySelector('.text-content').style.color = e.target.value; saveData(); } });
-    window.addEventListener('keydown', (e) => { if((e.key === "Delete" || e.key === "Backspace") && selectedEl && document.activeElement.contentEditable !== "true") { selectedEl.remove(); selectedEl = null; saveData(); } });
+
+    // Hàm bắt đầu đếm ngược 300s
+    function startCountdown() {
+        if (timerInterval) clearInterval(timerInterval);
+        
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            
+            if (timeLeft < 0) {
+                // Khi hết thời gian: Thực hiện Random vòng mới
+                rollMatrix();
+                // Reset thời gian về 300s
+                timeLeft = 300;
+            }
+            
+            updateTimerDisplay();
+        }, 1000);
+    }
+
+    // Cập nhật hiển thị đồng hồ dạng MM:SS
+    function updateTimerDisplay() {
+        const minutes = Math.floor(timeLeft / 60);
+        const seconds = timeLeft % 60;
+        timerDisplay.textContent = 
+            `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    // Hàm thực hiện hiệu ứng quay và gán kết quả
+    function rollMatrix() {
+        // Phát âm thanh
+        spinSound.currentTime = 0;
+        spinSound.play().catch(() => {});
+
+        // Logic khống chế: Tạo mảng chứa tối đa 6A hoặc 6b
+        // Random số lượng A từ 3 đến 6 (Để b cũng tự động từ 3 đến 6)
+        const countA = Math.floor(Math.random() * 4) + 3; 
+        const countB = 9 - countA;
+        
+        let finalResults = [];
+        for(let i=0; i<countA; i++) finalResults.push("A");
+        for(let i=0; i<countB; i++) finalResults.push("b");
+        
+        // Trộn vị trí
+        shuffleArray(finalResults);
+
+        cellDisplays.forEach((item, index) => {
+            let iterations = 0;
+            // Số lần nhảy chữ trước khi dừng
+            const maxIterations = 20 + Math.floor(Math.random() * 10); 
+
+            // Thêm hiệu ứng quay cho ô
+            item.container.classList.add("spinning");
+            // Reset màu chữ mặc định khi bắt đầu quay
+            item.text.style.color = "rgba(255, 255, 255, 0.3)";
+            item.text.style.textShadow = "none";
+
+            const interval = setInterval(() => {
+                // Hiệu ứng nhảy chữ ngẫu nhiên lúc đang quay
+                item.text.textContent = Math.random() > 0.5 ? "A" : "b";
+                iterations++;
+
+                if (iterations >= maxIterations) {
+                    clearInterval(interval);
+                    // Xóa hiệu ứng quay
+                    item.container.classList.remove("spinning");
+                    
+                    // Gán kết quả thực tế từ mảng đã khống chế
+                    const finalChar = finalResults[index];
+                    item.text.textContent = finalChar;
+                    
+                    // Đổi màu và hiệu ứng bóng đổ theo chữ cái cuối cùng
+                    if(finalChar === "A") {
+                        item.text.style.color = "#00ffff"; // Xanh Cyan neon
+                        item.text.style.textShadow = "0 0 15px #00ffff, 0 0 25px #00ffff";
+                    } else {
+                        item.text.style.color = "#ff00ff"; // Hồng neon
+                        item.text.style.textShadow = "0 0 15px #ff00ff, 0 0 25px #ff00ff";
+                    }
+                }
+            }, 50); // Tốc độ nhảy chữ (50ms)
+        });
+    }
 </script>
+
 </body>
 </html>
